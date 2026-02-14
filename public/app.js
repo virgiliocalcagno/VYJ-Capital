@@ -1,8 +1,87 @@
 const db = firebase.firestore();
 const functions = firebase.functions();
 
+// --- OCR ID Scanning Logic (Global Scope) ---
+window.triggerIDScan = function (side) {
+    const inputId = side === 'front' ? 'idFrontInput' : 'idBackInput';
+    document.getElementById(inputId).click();
+};
+
+window.handleIDFile = async function (input, side) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const statusDiv = document.getElementById('ocrStatus');
+    const statusText = document.getElementById('ocrStatusText');
+
+    statusDiv.style.display = 'block';
+    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
+
+    try {
+        const { data: { text } } = await Tesseract.recognize(file, 'spa', {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    statusText.innerText = `Analizando: ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+
+        console.log(`OCR Result (${side}):`, text);
+        parseOCRResult(text, side);
+
+        statusText.innerText = `✅ ${side === 'front' ? 'Frente' : 'Reverso'} procesado.`;
+        setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+
+    } catch (error) {
+        console.error("OCR Error:", error);
+        alert("Error al procesar la imagen con OCR.");
+        statusDiv.style.display = 'none';
+    }
+};
+
+function parseOCRResult(text, side) {
+    if (side === 'front') {
+        const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
+        if (idMatch) document.getElementById('regId').value = idMatch[0];
+        if (text.toUpperCase().includes('DOMINICANA')) {
+            document.getElementById('regNationality').value = 'República Dominicana';
+        }
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+        const nameCandidates = lines.filter(l =>
+            /^[A-Z\s]{10,}$/.test(l) &&
+            !l.includes('REPUBLICA') &&
+            !l.includes('ELECTORAL') &&
+            !l.includes('JUNTA')
+        );
+        if (nameCandidates.length > 0) {
+            document.getElementById('regName').value = nameCandidates[0];
+        }
+        const monthsMap = {
+            'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
+            'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
+        };
+        const dobMatch = text.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
+        if (dobMatch && monthsMap[dobMatch[2]]) {
+            const day = dobMatch[1].padStart(2, '0');
+            const month = monthsMap[dobMatch[2]];
+            const year = dobMatch[3];
+            document.getElementById('regDob').value = `${year}-${month}-${day}`;
+        }
+        if (text.includes('SEXO: M') || text.includes('SEXO M')) document.getElementById('regGender').value = 'M';
+        if (text.includes('SEXO: F') || text.includes('SEXO F')) document.getElementById('regGender').value = 'F';
+        if (text.toUpperCase().includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
+        if (text.toUpperCase().includes('CASADO')) document.getElementById('regCivil').value = 'casado';
+    } else if (side === 'back') {
+        const lines = text.split('\n');
+        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
+        if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
+            document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
+        }
+    }
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.3 (New Function Name Sync)");
+    console.log("VYJ Capital Interface Loaded - v11.4 (OCR Global Scope Fix)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -919,95 +998,4 @@ window.seedDatabase = async function () {
         alert("Error creando datos: " + e.message);
     }
 };
-
-// --- OCR ID Scanning Logic ---
-window.triggerIDScan = function (side) {
-    const inputId = side === 'front' ? 'idFrontInput' : 'idBackInput';
-    document.getElementById(inputId).click();
-};
-
-window.handleIDFile = async function (input, side) {
-    const file = input.files[0];
-    if (!file) return;
-
-    const statusDiv = document.getElementById('ocrStatus');
-    const statusText = document.getElementById('ocrStatusText');
-
-    statusDiv.style.display = 'block';
-    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
-
-    try {
-        const { data: { text } } = await Tesseract.recognize(file, 'spa', {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    statusText.innerText = `Analizando: ${Math.round(m.progress * 100)}%`;
-                }
-            }
-        });
-
-        console.log(`OCR Result (${side}):`, text);
-        parseOCRResult(text, side);
-
-        statusText.innerText = `✅ ${side === 'front' ? 'Frente' : 'Reverso'} procesado.`;
-        setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
-
-    } catch (error) {
-        console.error("OCR Error:", error);
-        alert("Error al procesar la imagen con OCR.");
-        statusDiv.style.display = 'none';
-    }
-};
-
-function parseOCRResult(text, side) {
-    if (side === 'front') {
-        // ID Extraction (Dominican format: 001-0493454-2)
-        const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
-        if (idMatch) document.getElementById('regId').value = idMatch[0];
-
-        // Nationality
-        if (text.toUpperCase().includes('DOMINICANA')) {
-            document.getElementById('regNationality').value = 'República Dominicana';
-        }
-
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
-
-        // Search for Name (Usually in ALL CAPS near the top/middle)
-        const nameCandidates = lines.filter(l =>
-            /^[A-Z\s]{10,}$/.test(l) &&
-            !l.includes('REPUBLICA') &&
-            !l.includes('ELECTORAL') &&
-            !l.includes('JUNTA')
-        );
-        if (nameCandidates.length > 0) {
-            document.getElementById('regName').value = nameCandidates[0];
-        }
-
-        // DOB (Dominican format: 26 OCTUBRE 1972)
-        const monthsMap = {
-            'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
-            'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
-        };
-        const dobMatch = text.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
-        if (dobMatch && monthsMap[dobMatch[2]]) {
-            const day = dobMatch[1].padStart(2, '0');
-            const month = monthsMap[dobMatch[2]];
-            const year = dobMatch[3];
-            document.getElementById('regDob').value = `${year}-${month}-${day}`;
-        }
-
-        // Gender & Marital Status
-        if (text.includes('SEXO: M') || text.includes('SEXO M')) document.getElementById('regGender').value = 'M';
-        if (text.includes('SEXO: F') || text.includes('SEXO F')) document.getElementById('regGender').value = 'F';
-        if (text.toUpperCase().includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
-        if (text.toUpperCase().includes('CASADO')) document.getElementById('regCivil').value = 'casado';
-
-    } else if (side === 'back') {
-        const lines = text.split('\n');
-        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
-        if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
-            document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
-        }
-    }
-}
-
-
+});
