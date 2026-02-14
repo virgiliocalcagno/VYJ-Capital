@@ -19,50 +19,55 @@ window.handleIDFile = async function (input, side) {
 
     statusDiv.style.display = 'block';
     statusMessage.style.display = 'none';
-    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
+    statusText.innerText = `Cargando motor de IA...`;
     statusPercent.innerText = '0%';
     progressBar.style.width = '0%';
 
+    let worker = null;
+
     try {
-        // Usamos 'spa+eng' para mejorar la detección de fuentes variadas
-        const { data: { text } } = await Tesseract.recognize(file, 'spa+eng', {
+        // Inicialización robusta recomendada para Tesseract.js v5
+        worker = await Tesseract.createWorker('spa', 1, {
             logger: m => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
                     statusPercent.innerText = `${progress}%`;
                     progressBar.style.width = `${progress}%`;
+                    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
                 }
             }
         });
+
+        const { data: { text } } = await worker.recognize(file);
 
         console.log(`OCR Raw Result (${side}):`, text);
         document.getElementById('ocrRawText').innerText = text;
         const success = parseOCRResult(text, side);
 
         if (success) {
-            statusText.innerText = `✅ ${side === 'front' ? 'Frente' : 'Reverso'} procesado.`;
+            statusText.innerText = `✅ Procesado con éxito.`;
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#dcfce7';
             statusMessage.style.color = '#166534';
-            statusMessage.innerText = "¡Éxito! Datos extraídos correctamente.";
+            statusMessage.innerText = "¡Excelente! Los datos de la cédula han sido cargados.";
         } else {
-            statusText.innerText = `⚠️ No se detectaron datos.`;
+            statusText.innerText = `⚠️ No se detectaron datos claros.`;
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#fef9c3';
             statusMessage.style.color = '#854d0e';
-            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de cédula. Prueba acercando más la cámara o con flash.";
+            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de cédula. Intenta con más luz o sin reflejos.";
         }
-
-        // No ocultar inmediatamente para que el usuario vea el mensaje
-        setTimeout(() => { if (!success) statusDiv.style.display = 'none'; }, 8000);
 
     } catch (error) {
         console.error("OCR Error:", error);
-        statusText.innerText = "❌ Error crítico.";
+        statusText.innerText = "❌ Error en el escaneo.";
         statusMessage.style.display = 'block';
         statusMessage.style.background = '#fee2e2';
         statusMessage.style.color = '#991b1b';
-        statusMessage.innerText = "Error al conectar con el motor de IA. Revisa tu conexión.";
+        statusMessage.innerText = "Hubo un problema técnico al procesar la imagen.";
+    } finally {
+        if (worker) await worker.terminate();
+        setTimeout(() => { if (statusDiv.style.display !== 'none') statusDiv.style.display = 'none'; }, 10000);
     }
 };
 
@@ -150,7 +155,7 @@ function parseOCRResult(text, side) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.7 (OCR Ultra-Robust)");
+    console.log("VYJ Capital Interface Loaded - v11.8 (OCR Stable Worker)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
