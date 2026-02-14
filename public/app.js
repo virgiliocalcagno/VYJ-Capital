@@ -569,8 +569,15 @@ document.getElementById('docUploadInput').addEventListener('change', async (e) =
     if (!file) return;
 
     if (currentScanType) {
-        await processOCR(file, currentScanType);
+        const type = currentScanType; // Save type before reset
         currentScanType = null;
+        const uploadResult = await processOCR(file, type);
+
+        // Auto-save scanned file to digital folder
+        const clientId = new URLSearchParams(window.location.search).get('id');
+        if (clientId && uploadResult) {
+            await uploadDocument(file, clientId, `Scan_${type}`);
+        }
     } else {
         const clientId = currentClientIdForUpload || new URLSearchParams(window.location.search).get('id');
         if (clientId) {
@@ -580,10 +587,10 @@ document.getElementById('docUploadInput').addEventListener('change', async (e) =
             alert("Error: No hay cliente seleccionado.");
         }
     }
-    e.target.value = '';
+    e.target.value = ''; // Reset input
 });
 
-async function uploadDocument(file, clientId) {
+async function uploadDocument(file, clientId, customName = null) {
     const progressContainer = document.getElementById('uploadProgressContainer');
     const progressBar = document.getElementById('uploadProgressBar');
     const progressText = document.getElementById('uploadPercent');
@@ -594,7 +601,8 @@ async function uploadDocument(file, clientId) {
 
     try {
         const storageRef = firebase.storage().ref();
-        const fileRef = storageRef.child(`clientes/${clientId}/${Date.now()}_${file.name}`);
+        const fileName = customName ? `${customName}_${Date.now()}.${file.name.split('.').pop()}` : `${Date.now()}_${file.name}`;
+        const fileRef = storageRef.child(`clientes/${clientId}/${fileName}`);
         const uploadTask = fileRef.put(file);
 
         return new Promise((resolve, reject) => {
@@ -613,13 +621,14 @@ async function uploadDocument(file, clientId) {
                 async () => {
                     const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
                     await db.collection('clientes').doc(clientId).collection('documentos').add({
-                        nombre: file.name,
+                        nombre: customName ? `${customName} (${file.name})` : file.name,
                         url: downloadURL,
                         tipo: file.type,
-                        fecha: firebase.firestore.FieldValue.serverTimestamp()
+                        fecha: firebase.firestore.FieldValue.serverTimestamp(),
+                        path: fileRef.fullPath
                     });
                     progressContainer.style.display = 'none';
-                    alert("✅ Documento subido correctamente");
+                    if (!customName) alert("✅ Documento subido correctamente");
                     resolve(downloadURL);
                 }
             );
@@ -659,9 +668,11 @@ async function processOCR(file, type) {
             if (data.valor_estimado) document.getElementById('regGuaranteeValue').value = data.valor_estimado;
             alert("✅ Garantía analizada");
         }
+        return true; // Return success for auto-upload
     } catch (error) {
         console.error("OCR Error:", error);
         alert("❌ Error de IA: " + error.message);
+        return false; // Return failure
     } finally {
         if (scanBtn) {
             scanBtn.disabled = false;
@@ -693,24 +704,49 @@ function loadClientDocuments(clientId) {
 
             grid.innerHTML = snapshot.docs.map(doc => {
                 const data = doc.data();
+                const docId = doc.id;
                 const icon = data.tipo.includes('pdf') ? '📄' : (data.tipo.includes('image') ? '🖼️' : '📁');
                 const preview = data.tipo.includes('image') ?
                     `<img src="${data.url}" alt="${data.nombre}">` :
                     `<span>${icon}</span>`;
 
                 return `
-                <div class="evidence-item" onclick="window.open('${data.url}', '_blank')">
-                    <div class="evidence-preview">
+                <div class="evidence-item">
+                    <div class="evidence-preview" onclick="window.open('${data.url}', '_blank')">
                         ${preview}
                     </div>
                     <div class="evidence-meta">
-                        <span class="evidence-name" title="${data.nombre}">${data.nombre}</span>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <span class="evidence-name" title="${data.nombre}">${data.nombre}</span>
+                            <button onclick="deleteDocument('${clientId}', '${docId}', '${data.path || ''}')" 
+                                style="background:none; border:none; cursor:pointer; color:var(--danger-color); font-size:1rem; padding:0;">🗑️</button>
+                        </div>
                         <span class="evidence-date">${data.fecha ? new Date(data.fecha.seconds * 1000).toLocaleDateString() : 'Reciente'}</span>
                     </div>
                 </div>
                 `;
             }).join('');
         });
+}
+
+async function deleteDocument(clientId, docId, path) {
+    if (!confirm("¿Estás seguro de eliminar este documento?")) return;
+
+    try {
+        // 1. Delete from Firestore
+        await db.collection('clientes').doc(clientId).collection('documentos').doc(docId).delete();
+
+        // 2. Delete from Storage if path exists
+        if (path) {
+            const fileRef = firebase.storage().ref().child(path);
+            await fileRef.delete();
+        }
+
+        alert("✅ Documento eliminado correctamente.");
+    } catch (error) {
+        console.error("Error deleting document:", error);
+        alert("❌ Error al eliminar: " + error.message);
+    }
 }
 
 // --- Seed Data Helper (For Demo Purposes) ---
