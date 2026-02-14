@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v7 (Expert Identity & Fixed KYC)");
+    console.log("VYJ Capital Interface Loaded - v8 (Ultra-Hard Cache Reset)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
