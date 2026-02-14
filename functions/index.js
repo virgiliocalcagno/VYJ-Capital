@@ -43,7 +43,7 @@ exports.motorMora = functions.pubsub.schedule("every 24 hours").onRun(async (con
 
     if (updatesCount > 0) {
         await batch.commit();
-        console.log(`Updated mora for ${updatesCount} loans.`);
+        console.log("VYJ Capital Interface Loaded - v11 (Forced Backend Sync)");
     }
     return null;
 });
