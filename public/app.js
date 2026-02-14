@@ -24,7 +24,8 @@ window.handleIDFile = async function (input, side) {
     progressBar.style.width = '0%';
 
     try {
-        const { data: { text } } = await Tesseract.recognize(file, 'spa', {
+        // Usamos 'spa+eng' para mejorar la detección de fuentes variadas
+        const { data: { text } } = await Tesseract.recognize(file, 'spa+eng', {
             logger: m => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
@@ -34,7 +35,7 @@ window.handleIDFile = async function (input, side) {
             }
         });
 
-        console.log(`OCR Result (${side}):`, text);
+        console.log(`OCR Raw Result (${side}):`, text);
         document.getElementById('ocrRawText').innerText = text;
         const success = parseOCRResult(text, side);
 
@@ -43,95 +44,84 @@ window.handleIDFile = async function (input, side) {
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#dcfce7';
             statusMessage.style.color = '#166534';
-            statusMessage.innerText = "Información extraída correctamente.";
+            statusMessage.innerText = "¡Éxito! Datos extraídos correctamente.";
         } else {
-            statusText.innerText = `⚠️ Lectura incompleta.`;
+            statusText.innerText = `⚠️ No se detectaron datos.`;
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#fef9c3';
             statusMessage.style.color = '#854d0e';
-            statusMessage.innerText = "La imagen parece borrosa o no es una cédula válida. Intenta con más luz.";
+            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de cédula. Prueba acercando más la cámara o con flash.";
         }
 
-        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
+        // No ocultar inmediatamente para que el usuario vea el mensaje
+        setTimeout(() => { if (!success) statusDiv.style.display = 'none'; }, 8000);
 
     } catch (error) {
         console.error("OCR Error:", error);
-        statusText.innerText = "❌ Error de lectura.";
+        statusText.innerText = "❌ Error crítico.";
         statusMessage.style.display = 'block';
         statusMessage.style.background = '#fee2e2';
         statusMessage.style.color = '#991b1b';
-        statusMessage.innerText = "No se pudo procesar la imagen. Verifica el formato.";
+        statusMessage.innerText = "Error al conectar con el motor de IA. Revisa tu conexión.";
     }
 };
 
 function parseOCRResult(text, side) {
     let foundData = false;
-    const cleanText = text.toUpperCase();
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+    const cleanText = text.toUpperCase().replace(/\s+/g, ' ');
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
 
-    console.log("--- Procesando Cédula (" + side + ") ---");
-    console.log("Líneas detectadas:", lines);
+    console.log("--- Procesando Cédula Dominicana (" + side + ") ---");
 
     if (side === 'front') {
-        // 1. Cédula (Formato dominicano mejorado)
-        // Buscamos algo que se parezca a 001-0000000-0, permitiendo que falten guiones o haya basura
-        const idMatch = text.match(/\d{3}-?\d{7}-?\d{1}/);
+        // 1. Cédula - Buscamos CUALQUIER secuencia de 11 dígitos, con o sin basura
+        const idMatch = text.replace(/[^0-9]/g, '').match(/\d{11}/);
         if (idMatch) {
-            let rawId = idMatch[0].replace(/-/g, '');
-            // Formatear correctamente: XXX-XXXXXXX-X
+            const rawId = idMatch[0];
             const formattedId = rawId.substring(0, 3) + '-' + rawId.substring(3, 10) + '-' + rawId.substring(10, 11);
             document.getElementById('regId').value = formattedId;
             foundData = true;
-            console.log("ID Encontrado:", formattedId);
+            console.log("Cédula Extraída:", formattedId);
         }
 
         // 2. Nacionalidad
-        if (cleanText.includes('DOMINICANA')) {
+        if (cleanText.includes('DOMINICANA') || cleanText.includes('DOM')) {
             document.getElementById('regNationality').value = 'República Dominicana';
             foundData = true;
         }
 
-        // 3. Nombre Completo (Lógica mucho más flexible)
-        // Ignoramos frases comunes de la tarjeta
-        const blacklist = ['REPUBLICA', 'DOMINICANA', 'JUNTA', 'CENTRAL', 'ELECTORAL', 'CEDULA', 'IDENTIDAD', 'IDENTIFICACION', 'DIRECCION', 'GENERAL', 'VALIDA', 'HASTA'];
+        // 3. Nombre Completo - Lógica Radical
+        // Buscamos líneas que no tengan números y tengan al menos 2 palabras
+        const blacklist = ['REPUBLICA', 'JUNTA', 'CENTRAL', 'ELECTORAL', 'CEDULA', 'IDENTIDAD', 'IDENTIFICACION', 'DIRECCION', 'GENERAL', 'VALIDA', 'HASTA', 'NACIMIENTO', 'LUGAR', 'SEXO'];
 
-        const nameCandidates = lines.filter(l => {
-            const isUpperCase = l === l.toUpperCase();
-            const hasNoNumbers = !/\d/.test(l);
+        const possibleNames = lines.filter(l => {
+            const up = l.toUpperCase();
             const words = l.split(/\s+/);
-            const containsBlacklist = blacklist.some(b => l.toUpperCase().includes(b));
-
-            // Un nombre suele tener 2-4 palabras y no estar en la lista negra
-            return words.length >= 2 && hasNoNumbers && !containsBlacklist && l.length > 8;
+            const containsBlacklist = blacklist.some(b => up.includes(b));
+            const hasNumbers = /\d/.test(l);
+            return words.length >= 2 && !hasNumbers && !containsBlacklist && l.length > 5;
         });
 
-        if (nameCandidates.length > 0) {
-            // El nombre suele estar después de "REPUBLICA DOMINICANA" y antes de la fecha
-            // Tomamos el candidato más probable (el que no tiene símbolos raros)
-            const bestName = nameCandidates.find(n => /^[A-ZÑ\s]+$/.test(n)) || nameCandidates[0];
-            document.getElementById('regName').value = bestName;
+        if (possibleNames.length > 0) {
+            // El nombre suele ser la línea con más palabras o en mayúsculas después del encabezado
+            document.getElementById('regName').value = possibleNames[0].toUpperCase();
             foundData = true;
-            console.log("Nombre Encontrado:", bestName);
+            console.log("Nombre Extraído:", possibleNames[0]);
         }
 
-        // 4. Fecha de Nacimiento
+        // 4. Fecha Nacimiento - Formato: 01 ENE 1990 o similar
         const monthsMap = {
-            'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
-            'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
+            'ENE': '01', 'FEB': '02', 'MAR': '03', 'ABR': '04', 'MAY': '05', 'JUN': '06',
+            'JUL': '07', 'AGO': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DIC': '12'
         };
-        // Buscamos dia mes(letras) año
-        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]{4,10})\s+(\d{4})/);
+        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]{3,10})\s+(\d{4})/);
         if (dobMatch) {
             const day = dobMatch[1].padStart(2, '0');
-            const monthText = dobMatch[2];
+            const monthPart = dobMatch[2].substring(0, 3);
             const year = dobMatch[3];
-
-            // Buscamos el mes más parecido por si hay errores de OCR
-            const monthKey = Object.keys(monthsMap).find(m => monthText.includes(m) || m.includes(monthText));
-            if (monthKey) {
-                document.getElementById('regDob').value = `${year}-${monthsMap[monthKey]}-${day}`;
+            if (monthsMap[monthPart]) {
+                document.getElementById('regDob').value = `${year}-${monthsMap[monthPart]}-${day}`;
                 foundData = true;
-                console.log("Fecha Nac. Encontrada:", `${year}-${monthsMap[monthKey]}-${day}`);
             }
         }
 
@@ -143,16 +133,15 @@ function parseOCRResult(text, side) {
         else if (cleanText.includes('CASADO')) document.getElementById('regCivil').value = 'casado';
 
     } else if (side === 'back') {
-        // En el reverso, la dirección suele estar después de "DOMICILIO"
-        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO') || l.toUpperCase().includes('DOMCILIO'));
+        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOM') || l.toUpperCase().includes('DOMICILIO'));
         if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
             document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
             foundData = true;
         } else {
-            // Si no encuentra "DOMICILIO", busca patrones de calles dominicanas
-            const addressMatch = text.match(/(C\/|CALLE|AVE|AVENIDA|SECTOR|EDIF|RES|PROYECTO).+/i);
-            if (addressMatch) {
-                document.getElementById('regAddress').value = addressMatch[0].trim();
+            const addressPatterns = ['CALLE', 'C/', 'AVE', 'AVENIDA', 'SECTOR', 'PROYECTO', 'RESIDENCIAL'];
+            const foundAddressLine = lines.find(l => addressPatterns.some(p => l.toUpperCase().includes(p)));
+            if (foundAddressLine) {
+                document.getElementById('regAddress').value = foundAddressLine.trim();
                 foundData = true;
             }
         }
@@ -161,7 +150,7 @@ function parseOCRResult(text, side) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.6 (OCR Robust Fix)");
+    console.log("VYJ Capital Interface Loaded - v11.7 (OCR Ultra-Robust)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
