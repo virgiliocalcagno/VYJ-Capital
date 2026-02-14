@@ -13,71 +13,125 @@ window.handleIDFile = async function (input, side) {
 
     const statusDiv = document.getElementById('ocrStatus');
     const statusText = document.getElementById('ocrStatusText');
+    const statusPercent = document.getElementById('ocrStatusPercent');
+    const progressBar = document.getElementById('ocrProgressBar');
+    const statusMessage = document.getElementById('ocrMessage');
 
     statusDiv.style.display = 'block';
+    statusMessage.style.display = 'none';
     statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
+    statusPercent.innerText = '0%';
+    progressBar.style.width = '0%';
 
     try {
         const { data: { text } } = await Tesseract.recognize(file, 'spa', {
             logger: m => {
                 if (m.status === 'recognizing text') {
-                    statusText.innerText = `Analizando: ${Math.round(m.progress * 100)}%`;
+                    const progress = Math.round(m.progress * 100);
+                    statusPercent.innerText = `${progress}%`;
+                    progressBar.style.width = `${progress}%`;
                 }
             }
         });
 
         console.log(`OCR Result (${side}):`, text);
-        parseOCRResult(text, side);
+        const success = parseOCRResult(text, side);
 
-        statusText.innerText = `✅ ${side === 'front' ? 'Frente' : 'Reverso'} procesado.`;
-        setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+        if (success) {
+            statusText.innerText = `✅ ${side === 'front' ? 'Frente' : 'Reverso'} procesado.`;
+            statusMessage.style.display = 'block';
+            statusMessage.style.background = '#dcfce7';
+            statusMessage.style.color = '#166534';
+            statusMessage.innerText = "Información extraída correctamente.";
+        } else {
+            statusText.innerText = `⚠️ Lectura incompleta.`;
+            statusMessage.style.display = 'block';
+            statusMessage.style.background = '#fef9c3';
+            statusMessage.style.color = '#854d0e';
+            statusMessage.innerText = "La imagen parece borrosa o no es una cédula válida. Intenta con más luz.";
+        }
+
+        setTimeout(() => { statusDiv.style.display = 'none'; }, 5000);
 
     } catch (error) {
         console.error("OCR Error:", error);
-        alert("Error al procesar la imagen con OCR.");
-        statusDiv.style.display = 'none';
+        statusText.innerText = "❌ Error de lectura.";
+        statusMessage.style.display = 'block';
+        statusMessage.style.background = '#fee2e2';
+        statusMessage.style.color = '#991b1b';
+        statusMessage.innerText = "No se pudo procesar la imagen. Verifica el formato.";
     }
 };
 
 function parseOCRResult(text, side) {
+    let foundData = false;
+    const cleanText = text.toUpperCase();
+
     if (side === 'front') {
+        // ID Extraction (Dominican format: 001-0493454-2)
         const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
-        if (idMatch) document.getElementById('regId').value = idMatch[0];
-        if (text.toUpperCase().includes('DOMINICANA')) {
-            document.getElementById('regNationality').value = 'República Dominicana';
+        if (idMatch) {
+            document.getElementById('regId').value = idMatch[0];
+            foundData = true;
         }
+
+        // Nationality
+        if (cleanText.includes('DOMINICANA')) {
+            document.getElementById('regNationality').value = 'República Dominicana';
+            foundData = true;
+        }
+
         const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+
+        // Search for Name (Usually in ALL CAPS near the top/middle)
         const nameCandidates = lines.filter(l =>
             /^[A-Z\s]{10,}$/.test(l) &&
             !l.includes('REPUBLICA') &&
             !l.includes('ELECTORAL') &&
-            !l.includes('JUNTA')
+            !l.includes('JUNTA') &&
+            !l.includes('CEDULA')
         );
         if (nameCandidates.length > 0) {
             document.getElementById('regName').value = nameCandidates[0];
+            foundData = true;
         }
+
+        // DOB (Dominican format: 26 OCTUBRE 1972)
         const monthsMap = {
             'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
             'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
         };
-        const dobMatch = text.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
+        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
         if (dobMatch && monthsMap[dobMatch[2]]) {
             const day = dobMatch[1].padStart(2, '0');
             const month = monthsMap[dobMatch[2]];
             const year = dobMatch[3];
             document.getElementById('regDob').value = `${year}-${month}-${day}`;
+            foundData = true;
         }
-        if (text.includes('SEXO: M') || text.includes('SEXO M')) document.getElementById('regGender').value = 'M';
-        if (text.includes('SEXO: F') || text.includes('SEXO F')) document.getElementById('regGender').value = 'F';
-        if (text.toUpperCase().includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
-        if (text.toUpperCase().includes('CASADO')) document.getElementById('regCivil').value = 'casado';
+
+        // Gender & Marital Status
+        if (cleanText.includes('SEXO: M') || cleanText.includes('SEXO M')) document.getElementById('regGender').value = 'M';
+        if (cleanText.includes('SEXO: F') || cleanText.includes('SEXO F')) document.getElementById('regGender').value = 'F';
+        if (cleanText.includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
+        if (cleanText.includes('CASADO')) document.getElementById('regCivil').value = 'casado';
+
     } else if (side === 'back') {
         const lines = text.split('\n');
         const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
         if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
             document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
+            foundData = true;
+        } else {
+            // Fallback: search for address-like patterns if DOMICILIO keyword is missed
+            const addressMatch = text.match(/(CALLE|C\/|AVE|AVENIDA|SECTOR|EDIF|RESIDENCIAL).+/i);
+            if (addressMatch) {
+                document.getElementById('regAddress').value = addressMatch[0].trim();
+                foundData = true;
+            }
         }
     }
+    return foundData;
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
