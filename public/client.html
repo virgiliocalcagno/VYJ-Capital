@@ -163,6 +163,12 @@
                         <div id="ocrMessage"
                             style="margin-top: 0.5rem; font-size: 0.75rem; padding: 0.5rem; border-radius: 6px; display: none;">
                         </div>
+                        <details style="margin-top:0.5rem;">
+                            <summary style="font-size:0.7rem; color:var(--text-secondary); cursor:pointer;">Ver texto
+                                detectado (Debug)</summary>
+                            <pre id="ocrRawText"
+                                style="font-size:0.65rem; background:#f8fafc; padding:0.5rem; border-radius:4px; max-height:100px; overflow:auto; white-space:pre-wrap; margin-top:0.25rem; border:1px solid #e2e8f0;"></pre>
+                        </details>
                     </div>
                     <!-- Hidden inputs -->
                     <input type="file" id="idFrontInput" accept="image/*" style="display:none;"
@@ -650,7 +656,7 @@
     <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
 
-    <script src="app.js?v=11.5"></script>
+    <script src="app.js?v=11.6"></script>
     <script>
         // Scripts moved to app.js
     </script>

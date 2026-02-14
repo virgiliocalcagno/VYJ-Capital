@@ -35,6 +35,7 @@ window.handleIDFile = async function (input, side) {
         });
 
         console.log(`OCR Result (${side}):`, text);
+        document.getElementById('ocrRawText').innerText = text;
         const success = parseOCRResult(text, side);
 
         if (success) {
@@ -66,65 +67,90 @@ window.handleIDFile = async function (input, side) {
 function parseOCRResult(text, side) {
     let foundData = false;
     const cleanText = text.toUpperCase();
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+
+    console.log("--- Procesando Cédula (" + side + ") ---");
+    console.log("Líneas detectadas:", lines);
 
     if (side === 'front') {
-        // ID Extraction (Dominican format: 001-0493454-2)
-        const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
+        // 1. Cédula (Formato dominicano mejorado)
+        // Buscamos algo que se parezca a 001-0000000-0, permitiendo que falten guiones o haya basura
+        const idMatch = text.match(/\d{3}-?\d{7}-?\d{1}/);
         if (idMatch) {
-            document.getElementById('regId').value = idMatch[0];
+            let rawId = idMatch[0].replace(/-/g, '');
+            // Formatear correctamente: XXX-XXXXXXX-X
+            const formattedId = rawId.substring(0, 3) + '-' + rawId.substring(3, 10) + '-' + rawId.substring(10, 11);
+            document.getElementById('regId').value = formattedId;
             foundData = true;
+            console.log("ID Encontrado:", formattedId);
         }
 
-        // Nationality
+        // 2. Nacionalidad
         if (cleanText.includes('DOMINICANA')) {
             document.getElementById('regNationality').value = 'República Dominicana';
             foundData = true;
         }
 
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+        // 3. Nombre Completo (Lógica mucho más flexible)
+        // Ignoramos frases comunes de la tarjeta
+        const blacklist = ['REPUBLICA', 'DOMINICANA', 'JUNTA', 'CENTRAL', 'ELECTORAL', 'CEDULA', 'IDENTIDAD', 'IDENTIFICACION', 'DIRECCION', 'GENERAL', 'VALIDA', 'HASTA'];
 
-        // Search for Name (Usually in ALL CAPS near the top/middle)
-        const nameCandidates = lines.filter(l =>
-            /^[A-Z\s]{10,}$/.test(l) &&
-            !l.includes('REPUBLICA') &&
-            !l.includes('ELECTORAL') &&
-            !l.includes('JUNTA') &&
-            !l.includes('CEDULA')
-        );
+        const nameCandidates = lines.filter(l => {
+            const isUpperCase = l === l.toUpperCase();
+            const hasNoNumbers = !/\d/.test(l);
+            const words = l.split(/\s+/);
+            const containsBlacklist = blacklist.some(b => l.toUpperCase().includes(b));
+
+            // Un nombre suele tener 2-4 palabras y no estar en la lista negra
+            return words.length >= 2 && hasNoNumbers && !containsBlacklist && l.length > 8;
+        });
+
         if (nameCandidates.length > 0) {
-            document.getElementById('regName').value = nameCandidates[0];
+            // El nombre suele estar después de "REPUBLICA DOMINICANA" y antes de la fecha
+            // Tomamos el candidato más probable (el que no tiene símbolos raros)
+            const bestName = nameCandidates.find(n => /^[A-ZÑ\s]+$/.test(n)) || nameCandidates[0];
+            document.getElementById('regName').value = bestName;
             foundData = true;
+            console.log("Nombre Encontrado:", bestName);
         }
 
-        // DOB (Dominican format: 26 OCTUBRE 1972)
+        // 4. Fecha de Nacimiento
         const monthsMap = {
             'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
             'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
         };
-        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
-        if (dobMatch && monthsMap[dobMatch[2]]) {
+        // Buscamos dia mes(letras) año
+        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]{4,10})\s+(\d{4})/);
+        if (dobMatch) {
             const day = dobMatch[1].padStart(2, '0');
-            const month = monthsMap[dobMatch[2]];
+            const monthText = dobMatch[2];
             const year = dobMatch[3];
-            document.getElementById('regDob').value = `${year}-${month}-${day}`;
-            foundData = true;
+
+            // Buscamos el mes más parecido por si hay errores de OCR
+            const monthKey = Object.keys(monthsMap).find(m => monthText.includes(m) || m.includes(monthText));
+            if (monthKey) {
+                document.getElementById('regDob').value = `${year}-${monthsMap[monthKey]}-${day}`;
+                foundData = true;
+                console.log("Fecha Nac. Encontrada:", `${year}-${monthsMap[monthKey]}-${day}`);
+            }
         }
 
-        // Gender & Marital Status
-        if (cleanText.includes('SEXO: M') || cleanText.includes('SEXO M')) document.getElementById('regGender').value = 'M';
-        if (cleanText.includes('SEXO: F') || cleanText.includes('SEXO F')) document.getElementById('regGender').value = 'F';
+        // 5. Sexo y Estado Civil
+        if (cleanText.includes('SEXO') && cleanText.includes('M')) document.getElementById('regGender').value = 'M';
+        else if (cleanText.includes('SEXO') && cleanText.includes('F')) document.getElementById('regGender').value = 'F';
+
         if (cleanText.includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
-        if (cleanText.includes('CASADO')) document.getElementById('regCivil').value = 'casado';
+        else if (cleanText.includes('CASADO')) document.getElementById('regCivil').value = 'casado';
 
     } else if (side === 'back') {
-        const lines = text.split('\n');
-        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
+        // En el reverso, la dirección suele estar después de "DOMICILIO"
+        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO') || l.toUpperCase().includes('DOMCILIO'));
         if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
             document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
             foundData = true;
         } else {
-            // Fallback: search for address-like patterns if DOMICILIO keyword is missed
-            const addressMatch = text.match(/(CALLE|C\/|AVE|AVENIDA|SECTOR|EDIF|RESIDENCIAL).+/i);
+            // Si no encuentra "DOMICILIO", busca patrones de calles dominicanas
+            const addressMatch = text.match(/(C\/|CALLE|AVE|AVENIDA|SECTOR|EDIF|RES|PROYECTO).+/i);
             if (addressMatch) {
                 document.getElementById('regAddress').value = addressMatch[0].trim();
                 foundData = true;
@@ -135,7 +161,7 @@ function parseOCRResult(text, side) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.4 (OCR Global Scope Fix)");
+    console.log("VYJ Capital Interface Loaded - v11.6 (OCR Robust Fix)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
