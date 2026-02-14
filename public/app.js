@@ -998,4 +998,4 @@ window.seedDatabase = async function () {
         alert("Error creando datos: " + e.message);
     }
 };
-});
+
