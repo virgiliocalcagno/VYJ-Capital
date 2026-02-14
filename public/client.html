@@ -411,6 +411,21 @@
             <!-- Right Column: Evidence / Documents -->
             <div>
                 <h3 class="section-title">📂 Expediente Digital</h3>
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <h4 style="margin:0 0 1rem 0; font-size: 0.9rem; color: var(--primary-color);">🔍 Auditoría Digital
+                        (KYC)</h4>
+                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 1rem;" id="kycMainBtn"
+                        onclick="runKYCAudit()">
+                        <span>🚀</span> Iniciar Auditoría con IA
+                    </button>
+                    <div id="kycResultsContainer"
+                        style="display: none; background: #f9fafb; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                        <p id="kycSummary" style="font-size: 0.85rem; margin-bottom: 0.75rem; font-style: italic;"></p>
+                        <div id="kycLinks" style="display: grid; gap: 0.5rem; margin-bottom: 0.75rem;"></div>
+                        <div id="kycBadges" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <!-- Upload Controls -->
                     <input type="file" id="docUploadInput" style="display: none;" accept="image/*,application/pdf">

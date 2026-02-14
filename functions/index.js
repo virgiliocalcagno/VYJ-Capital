@@ -304,3 +304,54 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
         throw new functions.https.HttpsError('internal', 'Error procesando la imagen con IA: ' + error.message);
     }
 });
+
+// --- 8. Auditoría Digital (KYC) con IA Grounding ---
+exports.auditoriaKYC = functions.https.onCall(async (data, context) => {
+    const { nombre, cedula } = data;
+    if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría');
+
+    try {
+        const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
+        // Usamos gemini-1.5-flash para el grounding con búsqueda de Google
+        const model = vertex_ai.getGenerativeModel({
+            model: 'gemini-1.5-flash',
+            tools: [{ googleSearchRetrieval: {} }]
+        });
+
+        const prompt = `Actúa como un Oficial de cumplimiento de KYC y Auditoría de Riesgo Dominicano.
+        TU MISIÓN: Investigar a fondo a la persona especificada para encontrar perfiles sociales y antecedentes legales en República Dominicana.
+        
+        PERSONA A INVESTIGAR:
+        - Nombre: ${nombre}
+        - Cédula: ${cedula || 'No provista'}
+        
+        INSTRUCCIONES DE BÚSQUEDA:
+        1. Busca perfiles en LinkedIn, Facebook e Instagram. Prioriza coincidencias en República Dominicana.
+        2. Busca registros en el Poder Judicial de la República Dominicana o menciones legales.
+        3. Identifica hallazgos clave públicos.
+        
+        FORMATO DE RESPUESTA (JSON):
+        {
+            "resumen_riesgo": "Análisis profesional del perfil encontrado",
+            "perfiles_encontrados": [
+                { "plataforma": "LinkedIn/Facebook/etc", "url": "...", "coincidencia_alta": true }
+            ],
+            "hallazgos_clave": ["Punto 1", "Punto 2"]
+        }`;
+
+        const result = await model.generateContent(prompt);
+        const text = result.response.candidates[0].content.parts[0].text;
+
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error("KYC AI did not return JSON:", text);
+            throw new Error("La IA no pudo estructurar la auditoría correctamente.");
+        }
+
+        return JSON.parse(jsonMatch[0]);
+
+    } catch (error) {
+        console.error("KYC Audit Error:", error);
+        throw new functions.https.HttpsError('internal', 'Error en la auditoría KYC: ' + error.message);
+    }
+});

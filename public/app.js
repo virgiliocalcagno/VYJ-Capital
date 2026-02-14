@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v5 (Expert Guarantee AI)");
+    console.log("VYJ Capital Interface Loaded - v6 (Digital KYC Audit)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -681,7 +681,7 @@ async function processOCR(file, type) {
     } catch (error) {
         console.error("OCR Error:", error);
         alert("❌ Error de IA: " + error.message);
-        return false; // Return failure
+        return false;
     } finally {
         if (scanBtn) {
             scanBtn.disabled = false;
@@ -689,6 +689,86 @@ async function processOCR(file, type) {
         }
     }
 }
+
+// --- Digital Audit (KYC) Logic ---
+window.runKYCAudit = async function () {
+    const name = document.getElementById('clientName').innerText;
+    const idDisplay = document.getElementById('clientIdDisplay').innerText;
+    const cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
+
+    const kycBtn = document.getElementById('kycMainBtn');
+    const container = document.getElementById('kycResultsContainer');
+
+    if (name === "Cargando cliente...") {
+        alert("Por favor, espera a que cargue el perfil del cliente.");
+        return;
+    }
+
+    kycBtn.disabled = true;
+    kycBtn.innerHTML = "<span>⌛</span> Analizando redes/legal...";
+    container.style.display = 'block';
+
+    // Limpiar resultados previos si existen
+    document.getElementById('kycSummary').innerText = "Investigando...";
+    document.getElementById('kycLinks').innerHTML = "";
+    document.getElementById('kycBadges').innerHTML = "";
+
+    try {
+        const auditoriaKYC = firebase.functions().httpsCallable('auditoriaKYC');
+        const result = await auditoriaKYC({ nombre: name, cedula: cedula });
+        const data = result.data;
+
+        // Renderizar Resumen
+        document.getElementById('kycSummary').innerText = data.resumen_riesgo || "Análisis completado.";
+
+        // Renderizar Enlaces (LinkedIn, FB, etc.)
+        const linksContainer = document.getElementById('kycLinks');
+        linksContainer.innerHTML = (data.perfiles_encontrados || []).map(p => `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem; border-radius:6px; border:1px solid #eee;">
+                <a href="${p.url}" target="_blank" style="font-size:0.8rem; color:var(--text-primary); text-decoration:none;">
+                    ${p.plataforma} ${p.coincidencia_alta ? '⭐' : ''}
+                </a>
+                <button onclick="vincularPerfil('${p.plataforma}', '${p.url}')" 
+                    style="font-size:0.7rem; color:var(--primary-color); background:none; border:none; cursor:pointer; font-weight:600;">
+                    Vincular
+                </button>
+            </div>
+        `).join('');
+
+        // Renderizar Hallazgos Clave
+        const badgesContainer = document.getElementById('kycBadges');
+        badgesContainer.innerHTML = (data.hallazgos_clave || []).map(h => `
+            <span style="background:rgba(59, 130, 246, 0.1); color:var(--primary-color); padding:0.25rem 0.6rem; border-radius:20px; font-size:0.7rem; font-weight:500;">
+                ${h}
+            </span>
+        `).join('');
+
+    } catch (error) {
+        console.error("KYC Error:", error);
+        alert("La IA de auditoría no pudo completar la búsqueda: " + error.message);
+    } finally {
+        kycBtn.disabled = false;
+        kycBtn.innerHTML = "<span>🚀</span> Re-iniciar Auditoría";
+    }
+};
+
+window.vincularPerfil = async function (plataforma, url) {
+    const clientId = new URLSearchParams(window.location.search).get('id');
+    if (!clientId) return;
+
+    try {
+        await db.collection('clientes').doc(clientId).collection('expediente').add({
+            nombre: `🔗 Perfil: ${plataforma}`,
+            url: url,
+            tipo: 'link',
+            fecha: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert(`✅ Perfil de ${plataforma} vinculado exitosamente al Expediente Digital.`);
+    } catch (e) {
+        console.error("Error vinculando perfil:", e);
+        alert("No se pudo vincular el perfil.");
+    }
+};
 
 function toBase64(file) {
     return new Promise((resolve, reject) => {
