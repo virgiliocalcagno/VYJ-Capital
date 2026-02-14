@@ -316,7 +316,7 @@ exports.auditoriaKYC = functions.https.onCall(async (data, context) => {
         const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
         // Usamos gemini-1.5-flash para el grounding con búsqueda de Google
         const model = vertex_ai.getGenerativeModel({
-            model: 'gemini-1.5-flash',
+            model: 'gemini-1.5-flash-002',
             tools: [{ googleSearchRetrieval: {} }]
         });
 
