@@ -692,6 +692,7 @@ async function processOCR(file, type) {
 
 // --- Digital Audit (KYC) Logic ---
 window.runKYCAudit = async function () {
+    console.log("Iniciando Auditoría KYC...");
     const name = document.getElementById('clientName').innerText;
     const idDisplay = document.getElementById('clientIdDisplay').innerText;
     const cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
