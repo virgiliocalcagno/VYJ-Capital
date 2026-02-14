@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v8 (Ultra-Hard Cache Reset)");
+    console.log("VYJ Capital Interface Loaded - v9 (Hard Logic Reset)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -694,25 +694,31 @@ async function processOCR(file, type) {
 }
 
 // --- Digital Audit (KYC) Logic ---
-window.runKYCAudit = async function () {
-    console.log("Iniciando Auditoría KYC...");
-
-    // Support for both Profile Mode and New Client Mode
-    let name = document.getElementById('clientName').innerText;
-    let idDisplay = document.getElementById('clientIdDisplay').innerText;
-    let cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
+window.runKYCAuditV9 = async function () {
+    console.log("Iniciando Auditoría KYC v9...");
 
     const params = new URLSearchParams(window.location.search);
-    if (params.get('mode') === 'new' || name === "Cargando cliente...") {
-        name = document.getElementById('regName').value;
-        cedula = document.getElementById('regId').value;
+    const isNew = params.get('mode') === 'new';
+
+    // Captura de datos ultra-robusta
+    let name = document.getElementById('regName').value.trim();
+    let cedula = document.getElementById('regId').value.trim();
+
+    // Si los campos de registro están vacíos, intentar sacarlos del encabezado del perfil
+    if (!name) {
+        name = document.getElementById('clientName').innerText;
+        if (name === "Cargando cliente...") name = "";
+    }
+    if (!cedula) {
+        const idDisplay = document.getElementById('clientIdDisplay').innerText;
+        cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
     }
 
     const kycBtn = document.getElementById('kycMainBtn');
     const container = document.getElementById('kycResultsContainer');
 
-    if (!name || name === "Cargando cliente...") {
-        alert("Por favor, ingresa el Nombre del cliente para realizar la auditoría.");
+    if (!name || name === "") {
+        alert("Por favor, ingresa el Nombre Completo del cliente para realizar la auditoría.");
         return;
     }
 
