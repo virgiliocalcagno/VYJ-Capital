@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11 (Forced Backend Sync)");
+    console.log("VYJ Capital Interface Loaded - v11.3 (New Function Name Sync)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -732,7 +732,7 @@ window.runKYCAuditV9 = async function () {
     document.getElementById('kycBadges').innerHTML = "";
 
     try {
-        const auditoriaKYC = firebase.functions().httpsCallable('auditoriaKYC');
+        const auditoriaKYC = firebase.functions().httpsCallable('auditoriaKYC_v11');
         const result = await auditoriaKYC({ nombre: name, cedula: cedula });
         const data = result.data;
 

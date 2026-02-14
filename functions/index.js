@@ -308,7 +308,7 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
 });
 
 // --- 8. Auditoría Digital (KYC) con IA Grounding ---
-exports.auditoriaKYC = functions.https.onCall(async (data, context) => {
+exports.auditoriaKYC_v11 = functions.https.onCall(async (data, context) => {
     const { nombre, cedula } = data;
     if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría');
 
