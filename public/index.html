@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYJ Capital | Panel de Control</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <header class="glass">
+            <h1>VYJ Capital</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
+                    <span>➕</span> Nuevo Cliente
+                </button>
+            </div>
+        </header>
+
+        <section class="metrics-grid">
+            <div class="card primary">
+                <div class="card-title">Capital en Calle</div>
+                <div class="card-value" id="totalCapital">$0.00</div>
+            </div>
+            <div class="card warning">
+                <div class="card-title">Intereses por Cobrar</div>
+                <div class="card-value" id="totalInterest">$0.00</div>
+            </div>
+            <div class="card danger">
+                <div class="card-title">Mora Acumulada</div>
+                <div class="card-value" id="totalMora">$0.00</div>
+            </div>
+        </section>
+
+        <h2 class="section-title"><span>⚠️</span> Lista de Mora Crítica</h2>
+        <div class="table-container">
+            <table id="moraTable">
+                <thead>
+                    <tr>
+                        <th>Cliente</th>
+                        <th>Préstamo ID</th>
+                        <th>Días Vencido</th>
+                        <th>Mora Acumulada</th>
+                        <th>Acción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Populated by JS -->
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">Cargando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <section style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 2rem;">
+            <h2 class="section-title">Gestión de Clientes</h2>
+            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                <div style="flex-grow: 1; display: flex; gap: 0.5rem;">
+                    <input type="text" id="searchInput" placeholder="Buscar por Nombre o Cédula..."
+                        style="flex-grow:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                    <button class="btn btn-primary" onclick="searchClient()">🔍 Buscar</button>
+                </div>
+                <!-- Seed Data Button (Temporary) -->
+                <button id="seedBtn" class="btn" style="background-color: #7c3aed; color: white;"
+                    onclick="seedDatabase()">🛠️ Crear Datos de Prueba</button>
+                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">➕ Nuevo
+                    Cliente</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

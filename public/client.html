@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYJ Capital | Perfil de Cliente</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .profile-header {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            background: #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .profile-info h2 {
+            margin: 0;
+            color: var(--text-primary);
+        }
+
+        .profile-info p {
+            margin: 0.25rem 0 0;
+            color: var(--text-secondary);
+        }
+
+        .evidence-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .evidence-item {
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #e5e7eb;
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+
+        .evidence-item:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .evidence-preview {
+            height: 150px;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .evidence-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .evidence-preview span {
+            font-size: 2rem;
+        }
+
+        .evidence-meta {
+            padding: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .evidence-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .evidence-date {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <header>
+            <a href="index.html" class="btn"
+                style="background: transparent; color: var(--text-secondary); padding-left: 0;">← Volver al
+                Dashboard</a>
+        </header>
+
+        <!-- New Client Form (Hidden by default) -->
+        <div id="newClientFormSection" class="card glass" style="display:none; margin-bottom:2rem;">
+            <h2 class="section-title"><span>📝</span> Expediente de Nuevo Cliente</h2>
+            <form id="createClientForm" style="display:grid; gap:1.25rem; grid-template-columns: 1fr 1fr;">
+
+                <!-- Sección 1: Datos Personales -->
+                <div
+                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">
+                    <h4 style="margin:0; color: var(--primary-color);">👤 Datos Personales</h4>
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Nombre Completo</label>
+                    <input type="text" id="regName" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Maria Perez" required>
+                </div>
+                <div>
+                    <label>Cédula / Pasaporte</label>
+                    <input type="text" id="regId" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="001-..." required>
+                </div>
+                <div>
+                    <label>Fecha de Nacimiento</label>
+                    <input type="date" id="regDob" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                </div>
+                <div>
+                    <label>Sexo</label>
+                    <select id="regGender" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                        <option value="M">Masculino</option>
+                        <option value="F">Femenino</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Estado Civil</label>
+                    <select id="regCivil" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                        <option value="soltero">Soltero/a</option>
+                        <option value="casado">Casado/a</option>
+                        <option value="union_libre">Unión Libre</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Teléfono Personal</label>
+                    <input type="tel" id="regPhone" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="(809)..." required>
+                </div>
+                <div>
+                    <label>Correo Electrónico</label>
+                    <input type="email" id="regEmail" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="correo@ejemplo.com">
+                </div>
+                <div style="grid-column: span 2;">
+                    <label>Dirección Residencia / GPS</label>
+                    <input type="text" id="regAddress" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;"
+                        placeholder="Dirección exacta o link de Google Maps">
+                </div>
+
+                <!-- Sección 2: Datos Laborales -->
+                <div
+                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary-color);">💼 Información Laboral</h4>
+                </div>
+                <div>
+                    <label>Ocupación / Puesto</label>
+                    <input type="text" id="regJob" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Contadora">
+                </div>
+                <div>
+                    <label>Empresa</label>
+                    <input type="text" id="regCompany" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Nombre de la empresa">
+                </div>
+                <div>
+                    <label>Sueldo Mensual</label>
+                    <input type="number" id="regSalary" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="0.00">
+                </div>
+                <div>
+                    <label>Teléfono Trabajo</label>
+                    <input type="tel" id="regWorkPhone" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="(809)...">
+                </div>
+
+                <!-- Sección 3: Referencias y Fiador -->
+                <div
+                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary-color);">👥 Referencias y Fiador</h4>
+                </div>
+                <div style="grid-column: span 2;">
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;"><strong>Fiador
+                            Solidario</strong></p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                        <input type="text" id="regSolidarioName" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Nombre Fiador">
+                        <input type="text" id="regSolidarioId" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Cédula Fiador">
+                        <input type="tel" id="regSolidarioPhone" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Teléfono Fiador">
+                        <input type="text" id="regSolidarioJob" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;"
+                            placeholder="Referencia Laboral Fiador">
+                    </div>
+                </div>
+
+                <div style="grid-column: span 2; margin-top: 0.5rem;">
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        <strong>Referencias Personales</strong>
+                    </p>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                        <div style="background: rgba(0,0,0,0.02); padding: 0.75rem; border-radius: 8px;">
+                            <input type="text" id="ref1Name" class="btn-secondary"
+                                style="width:100%; padding:0.5rem; border-radius:8px; margin-bottom:0.5rem;"
+                                placeholder="Nombre Ref 1">
+                            <input type="tel" id="ref1Phone" class="btn-secondary"
+                                style="width:100%; padding:0.5rem; border-radius:8px;" placeholder="Teléfono Ref 1">
+                        </div>
+                        <div style="background: rgba(0,0,0,0.02); padding: 0.75rem; border-radius: 8px;">
+                            <input type="text" id="ref2Name" class="btn-secondary"
+                                style="width:100%; padding:0.5rem; border-radius:8px; margin-bottom:0.5rem;"
+                                placeholder="Nombre Ref 2">
+                            <input type="tel" id="ref2Phone" class="btn-secondary"
+                                style="width:100%; padding:0.5rem; border-radius:8px;" placeholder="Teléfono Ref 2">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 4: Préstamo Inicial (Opcional) -->
+                <div
+                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
+                    <h4 style="margin:0; color: var(--primary-color);">💰 Préstamo Inicial (Opcional)</h4>
+                    <label class="switch" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="enableInitialLoan"
+                            onchange="document.getElementById('initialLoanFields').style.display = this.checked ? 'grid' : 'none'">
+                        <small>Crear inmediatamente</small>
+                    </label>
+                </div>
+
+                <div id="initialLoanFields"
+                    style="grid-column: span 2; display: none; grid-template-columns: 1fr 1fr; gap: 1.25rem; background: rgba(59, 130, 246, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--primary-color);">
+                    <div>
+                        <label>Monto Solicitado ($)</label>
+                        <input type="number" id="initLoanAmount" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="0.00">
+                    </div>
+                    <div>
+                        <label>Tasa de Interés (%)</label>
+                        <div style="display:flex;">
+                            <input type="number" id="initLoanRate"
+                                style="width:60%; padding:0.75rem; border:1px solid var(--border); border-radius:12px 0 0 12px;">
+                            <select id="initLoanRatePeriod"
+                                style="width:40%; padding:0.75rem; border:1px solid var(--border); border-left:none; border-radius:0 12px 12px 0; background:#f9fafb;">
+                                <option value="mensual">Mensual</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label>Tipo de Amortización</label>
+                        <select id="initLoanAmortization" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;">
+                            <option value="REDITO_PURO">Rédito Puro (Solo Interés)</option>
+                            <option value="ABONO_CAPITAL">Cuota Fija (Abono Capital)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>Frecuencia de Pago</label>
+                        <select id="initLoanFrequency" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;">
+                            <option value="mensual">Mensual</option>
+                            <option value="quincenal">Quincenal</option>
+                            <option value="semanal">Semanal</option>
+                        </select>
+                    </div>
+                    <div style="grid-column: span 2;">
+                        <label>Garantía</label>
+                        <textarea id="initLoanGuarantee" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px; height: 60px;"
+                            placeholder="Descripción de la garantía (Vehículo, etc.)"></textarea>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary"
+                    style="grid-column: span 2; margin-top: 1rem; height: 50px;">💾 Guardar Expediente Completo</button>
+            </form>
+        </div>
+
+
+        <!-- Dynamic Client Data -->
+        <div class="card profile-header glass" id="profileHeader">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-info">
+                <h2 id="clientName">Cargando cliente...</h2>
+                <p id="clientIdDisplay">ID: ...</p>
+                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
+                    <p id="clientAddress">📍 ...</p>
+                    <p id="clientPhone">📞 ...</p>
+                </div>
+            </div>
+            <div class="header-actions"
+                style="margin-left: auto; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+                <span class="status-badge status-active" id="clientStatusBadge">ACTIVO</span>
+                <button class="btn btn-primary" onclick="document.getElementById('newLoanModal').style.display='flex'">
+                    <span>💰</span> Nuevo Préstamo
+                </button>
+            </div>
+        </div>
+
+        <div class="grid-container" style="display: grid; grid-template-columns: 2.5fr 1fr; gap: 2rem;">
+
+            <!-- Left Column: Loans & Ficha -->
+            <div>
+                <!-- Ficha Técnica Section -->
+                <div id="fichaTecnicaSection" class="card glass" style="margin-bottom: 2rem; display: none;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h3 style="margin:0;">👤 Ficha Técnica Completa</h3>
+                        <button class="btn"
+                            onclick="document.getElementById('fichaTecnicaSection').style.display='none'"
+                            style="font-size: 0.8rem;">Cerrar ✕</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                        <!-- Col 1: Personales -->
+                        <div>
+                            <h4
+                                style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--primary-color);">
+                                Datos Personales</h4>
+                            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;" id="fichaPersonal">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                        <!-- Col 2: Laborales -->
+                        <div>
+                            <h4
+                                style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--primary-color);">
+                                Información Laboral</h4>
+                            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;" id="fichaLaboral">
+                                <!-- Populated by JS -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 1.5rem;">
+                        <h4
+                            style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem; color: var(--primary-color);">
+                            Referencias y Fiador</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;" id="fichaReferencias">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="section-title">Préstamos Activos</h3>
+                <div id="loansContainer">
+                    <p style="text-align:center; color:#666;">Buscando préstamos...</p>
+                </div>
+            </div>
+
+            <!-- Right Column: Evidence / Documents -->
+            <div>
+                <h3 class="section-title">📂 Expediente Digital</h3>
+                <div class="card">
+                    <!-- Upload Controls -->
+                    <input type="file" id="docUploadInput" style="display: none;" accept="image/*,application/pdf">
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;"
+                        onclick="document.getElementById('fichaTecnicaSection').style.display='block'">🔎 Ver Ficha
+                        Completa</button>
+                    <button class="btn btn-primary"
+                        style="width: 100%; margin-bottom: 1rem; background: #f3f4f6; color: var(--text-primary); border: 1px solid var(--border);"
+                        onclick="triggerUpload()">+ Subir Documento</button>
+
+                    <!-- Upload Progress -->
+                    <div id="uploadProgressContainer"
+                        style="display: none; margin-bottom: 1rem; background: #f9fafb; padding: 0.75rem; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.25rem;">
+                            <small>Subiendo...</small>
+                            <small id="uploadPercent">0%</small>
+                        </div>
+                        <div
+                            style="width: 100%; height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
+                            <div id="uploadProgressBar"
+                                style="width: 0%; height: 100%; background: var(--primary-color); transition: width 0.2s;">
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="evidence-grid" style="grid-template-columns: 1fr;" id="documentsGrid">
+                        <p style="text-align: center; color: var(--text-secondary); font-size: 0.9rem; padding: 1rem;">
+                            Cargando documentos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    </div>
+
+    <!-- MODAL: Nuevo Préstamo -->
+    <div id="newLoanModal" class="modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width: 90%; max-width: 600px; max-height: 90vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="margin:0;">📝 Nuevo Préstamo</h2>
+                <button onclick="document.getElementById('newLoanModal').style.display='none'"
+                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <form id="loanForm">
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Monto Solicitado
+                            ($)</label>
+                        <input type="number" step="0.01" id="loanAmount" class="form-control"
+                            style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tasa de Interés (%)</label>
+                        <div style="display:flex;">
+                            <input type="number" step="0.01" id="loanRate"
+                                style="width:60%; padding:0.5rem; border:1px solid #ccc; border-top-left-radius:4px; border-bottom-left-radius:4px;">
+                            <select id="loanRatePeriod"
+                                style="width:40%; padding:0.5rem; border:1px solid #ccc; border-left:none; border-top-right-radius:4px; border-bottom-right-radius:4px; background:#f9fafb;">
+                                <option value="mensual">Mensual</option>
+                                <option value="anual">Anual</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="margin-top:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tipo de Amortización</label>
+                    <select id="loanAmortization" class="form-control"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;"
+                        onchange="toggleAmortizationFields(this.value)">
+                        <option value="REDITO_PURO">Rédito Puro (Solo Interés, Capital al Final)</option>
+                        <option value="INTERES_SOBRE_SALDO">Interés s/ Saldo Insoluto (Abonos Capital Permitidos)
+                        </option>
+                        <option value="ABONO_CAPITAL">Cuota Fija (Amortización Clásica)</option>
+                    </select>
+                </div>
+
+                <div style="margin-top:1rem; display:grid; grid-template-columns: 1fr 1fr; gap:1rem;">
+                    <div>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Frecuencia de Pago</label>
+                        <select id="loanFrequency"
+                            style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                            <option value="mensual">Mensual</option>
+                            <option value="quincenal">Quincenal</option>
+                            <option value="semanal">Semanal</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Plazo (Meses)</label>
+                        <input type="number" id="loanTerm" placeholder="Dejar en 0 si es Indefinido"
+                            style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                    </div>
+                </div>
+
+                <div style="margin-top:1.5rem; border-top:1px solid #eee; padding-top:1rem;">
+                    <h4 style="margin:0 0 1rem 0;">Garantía y Fiador</h4>
+                    <textarea id="loanGuarantee" placeholder="Descripción de Garantía (Vehículo, Título, etc.)"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px; margin-bottom:0.5rem;"></textarea>
+                    <input type="text" id="loanGuarantor" placeholder="Nombre Fiador Solidario"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px; margin-bottom:0.5rem;">
+                </div>
+
+                <button type="submit" class="btn btn-primary"
+                    style="width:100%; margin-top:1.5rem; justify-content:center;">Crear Préstamo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Registrar Cobro -->
+    <div id="paymentModal" class="modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+        <div class="card" style="width: 90%; max-width: 500px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
+                <h2 style="margin:0;">💰 Registrar Cobro</h2>
+                <button onclick="document.getElementById('paymentModal').style.display='none'"
+                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+            </div>
+
+            <form id="paymentForm">
+                <div style="background:#f3f4f6; padding:1rem; border-radius:8px; margin-bottom:1.5rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:0.5rem;">
+                        <span>Interés Pendiente:</span>
+                        <strong id="displayInterestPending">$0.00</strong>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; margin-bottom:0.5rem; color:var(--danger-color);">
+                        <span>Mora:</span>
+                        <strong id="displayMoraPending">$0.00</strong>
+                    </div>
+                    <div
+                        style="display:flex; justify-content:space-between; border-top:1px solid #ccc; padding-top:0.5rem;">
+                        <span>Total a Pagar:</span>
+                        <strong id="displayTotalDue">$0.00</strong>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Monto Recibido ($)</label>
+                    <input type="number" step="0.01" id="paymentAmount" class="form-control"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px; font-size:1.2rem; font-weight:bold;">
+                </div>
+
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tipo de Aplicación</label>
+                    <select id="paymentType"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        <option value="inteligente">Automático (Mora -> Interés -> Capital)</option>
+                        <option value="solo_interes">Solo Interés (Amortizar Deuda)</option>
+                        <option value="abono_capital_directo">Abono Extraordinario a Capital</option>
+                    </select>
+                </div>
+
+                <div style="margin-bottom:1rem;">
+                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Origen de Fondos</label>
+                    <select id="paymentOrigin"
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia Bancaria</option>
+                        <option value="cheque">Cheque</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;">Procesar Pago
+                    & Generar Recibo</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-storage-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+
+    <script src="app.js"></script>
+    <script>
+        // Scripts moved to app.js
+    </script>
+</body>
+
+</html>
