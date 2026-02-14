@@ -59,6 +59,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                             { nombre: document.getElementById('ref1Name').value || '', telefono: document.getElementById('ref1Phone').value || '' },
                             { nombre: document.getElementById('ref2Name').value || '', telefono: document.getElementById('ref2Phone').value || '' }
                         ],
+                        // Warranty Information
+                        garantia: {
+                            tipo: document.getElementById('regGuaranteeType').value,
+                            valor_estimado: parseFloat(document.getElementById('regGuaranteeValue').value) || 0,
+                            descripcion: document.getElementById('regGuaranteeDesc').value || ''
+                        },
                         folder_virtual: ''
                     };
 
@@ -540,7 +546,8 @@ window.searchClient = async function () {
     }
 }
 
-// --- 4. Document Upload Logic ---
+// --- Document & OCR Logic ---
+let currentScanType = null;
 let currentClientIdForUpload = null;
 
 function triggerUpload() {
@@ -552,12 +559,31 @@ function triggerUpload() {
     document.getElementById('docUploadInput').click();
 }
 
-// Listen for file selection
+window.triggerScan = function (type) {
+    currentScanType = type;
+    document.getElementById('docUploadInput').click();
+};
+
 document.getElementById('docUploadInput').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // UI Updates
+    if (currentScanType) {
+        await processOCR(file, currentScanType);
+        currentScanType = null;
+    } else {
+        const clientId = currentClientIdForUpload || new URLSearchParams(window.location.search).get('id');
+        if (clientId) {
+            await uploadDocument(file, clientId);
+            currentClientIdForUpload = null;
+        } else {
+            alert("Error: No hay cliente seleccionado.");
+        }
+    }
+    e.target.value = '';
+});
+
+async function uploadDocument(file, clientId) {
     const progressContainer = document.getElementById('uploadProgressContainer');
     const progressBar = document.getElementById('uploadProgressBar');
     const progressText = document.getElementById('uploadPercent');
@@ -568,47 +594,90 @@ document.getElementById('docUploadInput').addEventListener('change', async (e) =
 
     try {
         const storageRef = firebase.storage().ref();
-        const fileRef = storageRef.child(`clientes/${currentClientIdForUpload}/${Date.now()}_${file.name}`);
-
+        const fileRef = storageRef.child(`clientes/${clientId}/${Date.now()}_${file.name}`);
         const uploadTask = fileRef.put(file);
 
-        uploadTask.on('state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-                progressBar.style.width = progress + '%';
-                progressText.innerText = Math.round(progress) + '%';
-            },
-            (error) => {
-                console.error("Upload error:", error);
-                alert("Error subiendo archivo: " + error.message);
-                progressContainer.style.display = 'none';
-            },
-            async () => {
-                // Upload completed successfully
-                const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
-
-                // Save metadata to Firestore
-                await db.collection('clientes').doc(currentClientIdForUpload).collection('documentos').add({
-                    nombre: file.name,
-                    url: downloadURL,
-                    tipo: file.type,
-                    fecha: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                progressContainer.style.display = 'none';
-                alert("✅ Documento subido correctamente");
-            }
-        );
-
+        return new Promise((resolve, reject) => {
+            uploadTask.on('state_changed',
+                (snapshot) => {
+                    const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                    progressBar.style.width = progress + '%';
+                    progressText.innerText = Math.round(progress) + '%';
+                },
+                (error) => {
+                    console.error("Upload error:", error);
+                    alert("Error subiendo archivo: " + error.message);
+                    progressContainer.style.display = 'none';
+                    reject(error);
+                },
+                async () => {
+                    const downloadURL = await uploadTask.snapshot.ref.getDownloadURL();
+                    await db.collection('clientes').doc(clientId).collection('documentos').add({
+                        nombre: file.name,
+                        url: downloadURL,
+                        tipo: file.type,
+                        fecha: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    progressContainer.style.display = 'none';
+                    alert("✅ Documento subido correctamente");
+                    resolve(downloadURL);
+                }
+            );
+        });
     } catch (error) {
-        console.error("Error initiating upload:", error);
+        console.error("Upload error:", error);
         alert("Error al iniciar subida.");
         progressContainer.style.display = 'none';
-    } finally {
-        // Reset input
-        e.target.value = '';
     }
-});
+}
+
+async function processOCR(file, type) {
+    const scanBtn = document.querySelector(`button[onclick="triggerScan('${type}')"]`);
+    const originalText = scanBtn ? scanBtn.innerHTML : "Scan";
+    if (scanBtn) {
+        scanBtn.disabled = true;
+        scanBtn.innerHTML = "<span>⌛</span> <small>Analizando...</small>";
+    }
+
+    try {
+        const base64 = await toBase64(file);
+        const scanDocument = firebase.functions().httpsCallable('scanDocument');
+        const result = await scanDocument({
+            image: base64.split(',')[1],
+            docType: type
+        });
+
+        const data = result.data;
+        if (type === 'id') {
+            if (data.nombre) document.getElementById('regName').value = data.nombre;
+            if (data.cedula) document.getElementById('regId').value = data.cedula;
+            if (data.fecha_nacimiento) document.getElementById('regDob').value = data.fecha_nacimiento;
+            if (data.sexo) document.getElementById('regGender').value = data.sexo;
+            alert("✅ Información del ID extraída");
+        } else if (type === 'guarantee') {
+            if (data.descripcion) document.getElementById('regGuaranteeDesc').value = data.descripcion;
+            if (data.valor_estimado) document.getElementById('regGuaranteeValue').value = data.valor_estimado;
+            alert("✅ Garantía analizada");
+        }
+    } catch (error) {
+        console.error("OCR Error:", error);
+        alert("❌ Error de IA: " + error.message);
+    } finally {
+        if (scanBtn) {
+            scanBtn.disabled = false;
+            scanBtn.innerHTML = originalText;
+        }
+    }
+}
+
+function toBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = error => reject(error);
+    });
+}
 
 // Helper: Load Documents (Realtime)
 function loadClientDocuments(clientId) {

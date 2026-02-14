@@ -3,6 +3,7 @@ const admin = require("firebase-admin");
 const axios = require("axios");
 const { differenceInDays, addMonths, addDays, format } = require("date-fns");
 const PDFDocument = require("pdfkit");
+const { VertexAI } = require('@google-cloud/vertexai');
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -234,3 +235,44 @@ async function procesarComisionReferidor(loanId, interestPaid) {
         }
     }
 }
+
+// --- 7. AI OCR: Scan Document with Gemini ---
+exports.scanDocument = functions.https.onCall(async (data, context) => {
+    const { image, docType } = data; // image is base64
+    if (!image) throw new functions.https.HttpsError('invalid-argument', 'No image provided');
+
+    try {
+        const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
+        const model = vertex_ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+
+        let prompt = "";
+        if (docType === 'id') {
+            prompt = "Actúa como un experto en OCR de alta precisión para documentos dominicanos (Cédula de identidad). Extrae la siguiente información de la imagen en formato JSON: { 'nombre': 'Nombre completo', 'cedula': 'Número de cédula con guiones', 'fecha_nacimiento': 'YYYY-MM-DD', 'sexo': 'M' o 'F' }. Si no encuentras algo, deja el campo vacío. Solo responde con el JSON puro.";
+        } else if (docType === 'guarantee') {
+            prompt = "Analiza esta imagen de una garantía (vehículo, factura, contrato, etc). Extrae una descripción técnica y un valor estimado si es visible. Responde en formato JSON: { 'descripcion': 'Descripción detallada', 'valor_estimado': 0.00 }. Solo responde con el JSON puro.";
+        }
+
+        const request = {
+            contents: [{
+                role: 'user',
+                parts: [
+                    { inlineData: { mimeType: 'image/jpeg', data: image } },
+                    { text: prompt }
+                ]
+            }]
+        };
+
+        const result = await model.generateContent(request);
+        const response = result.response;
+        let text = response.candidates[0].content.parts[0].text;
+
+        // Clean up markdown code blocks if present
+        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+
+        return JSON.parse(text);
+
+    } catch (error) {
+        console.error("AI Scan Error:", error);
+        throw new functions.https.HttpsError('internal', 'Error procesando la imagen con IA: ' + error.message);
+    }
+});

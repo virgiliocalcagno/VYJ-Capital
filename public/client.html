@@ -124,10 +124,16 @@
                     <input type="text" id="regName" class="btn-secondary"
                         style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Maria Perez" required>
                 </div>
-                <div>
-                    <label>Cédula / Pasaporte</label>
-                    <input type="text" id="regId" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="001-..." required>
+                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <div style="flex-grow: 1;">
+                        <label>Cédula / Pasaporte</label>
+                        <input type="text" id="regId" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="001-..." required>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="triggerScan('id')"
+                        style="padding: 0.75rem; min-height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📷</span> <small>Escanear</small>
+                    </button>
                 </div>
                 <div>
                     <label>Fecha de Nacimiento</label>
@@ -237,7 +243,40 @@
                     </div>
                 </div>
 
-                <!-- Sección 4: Préstamo Inicial (Opcional) -->
+                <!-- Sección 4: Información de Garantía -->
+                <div
+                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary-color);">🚗 Información de Garantía</h4>
+                </div>
+                <div>
+                    <label>Tipo de Garantía</label>
+                    <select id="regGuaranteeType" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                        <option value="vehiculo">Vehículo / Motor</option>
+                        <option value="electrodomestico">Electrodoméstico</option>
+                        <option value="propiedad">Título / Propiedad</option>
+                        <option value="otros">Otros</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Valor Estimado ($)</label>
+                    <input type="number" id="regGuaranteeValue" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="0.00">
+                </div>
+                <div style="grid-column: span 2; display: flex; gap: 0.5rem; align-items: flex-end;">
+                    <div style="flex-grow: 1;">
+                        <label>Descripción detallada de Garantía</label>
+                        <textarea id="regGuaranteeDesc" class="btn-secondary"
+                            style="width:100%; padding:0.75rem; border-radius:12px; height: 60px;"
+                            placeholder="Marca, modelo, año, condición, placa, etc."></textarea>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="triggerScan('guarantee')"
+                        style="padding: 0.75rem; min-height: 60px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
+                        <span>📸</span> <small>Subir Fotos</small>
+                    </button>
+                </div>
+
+                <!-- Sección 5: Préstamo Inicial (Opcional) -->
                 <div
                     style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
                     <h4 style="margin:0; color: var(--primary-color);">💰 Préstamo Inicial (Opcional)</h4>
