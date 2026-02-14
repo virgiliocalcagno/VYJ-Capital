@@ -255,10 +255,12 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
             - Nombre: El nombre completo tal cual aparece.
             - Cédula: El número con sus guiones (ej: 001-0000000-1).
             - Fecha Nacimiento: Formato YYYY-MM-DD.
+            - Lugar de Nacimiento: Ciudad o provincia de nacimiento (Lugar de Nac.)
             - Sexo: Solo 'M' o 'F'.
+            - Dirección: Si la imagen es del REVERSO de la cédula, extrae la DIRECCIÓN completa.
             
             RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
-            { "nombre": "...", "cedula": "...", "fecha_nacimiento": "...", "sexo": "..." }`;
+            { "nombre": "...", "cedula": "...", "fecha_nacimiento": "...", "lugar_nacimiento": "...", "sexo": "...", "direccion": "..." }`;
         } else if (docType === 'guarantee') {
             prompt = `Actúa como Perito Valuador y Analista de Documentos Legales de Garantía.
             TU MISIÓN: Analizar exhaustivamente el documento o imagen para extraer detalles técnicos y legales.

@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v6 (Digital KYC Audit)");
+    console.log("VYJ Capital Interface Loaded - v7 (Expert Identity & Fixed KYC)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         nombre: document.getElementById('regName').value,
                         cedula: document.getElementById('regId').value,
                         fecha_nacimiento: document.getElementById('regDob').value || '',
+                        lugar_nacimiento: document.getElementById('regPob').value || '',
                         sexo: document.getElementById('regGender').value,
                         estado_civil: document.getElementById('regCivil').value,
                         telefono: document.getElementById('regPhone').value,
@@ -670,8 +671,10 @@ async function processOCR(file, type) {
             if (data.nombre) document.getElementById('regName').value = data.nombre;
             if (data.cedula) document.getElementById('regId').value = data.cedula;
             if (data.fecha_nacimiento) document.getElementById('regDob').value = data.fecha_nacimiento;
+            if (data.lugar_nacimiento) document.getElementById('regPob').value = data.lugar_nacimiento;
             if (data.sexo) document.getElementById('regGender').value = data.sexo;
-            alert("✅ Información del ID extraída");
+            if (data.direccion) document.getElementById('regAddress').value = data.direccion;
+            alert("✅ Información del ID extraída. Si escaneaste el frente, ahora puedes escanear el reverso para la dirección.");
         } else if (type === 'guarantee') {
             if (data.descripcion) document.getElementById('regGuaranteeDesc').value = data.descripcion;
             if (data.valor_estimado) document.getElementById('regGuaranteeValue').value = data.valor_estimado;
@@ -693,15 +696,23 @@ async function processOCR(file, type) {
 // --- Digital Audit (KYC) Logic ---
 window.runKYCAudit = async function () {
     console.log("Iniciando Auditoría KYC...");
-    const name = document.getElementById('clientName').innerText;
-    const idDisplay = document.getElementById('clientIdDisplay').innerText;
-    const cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
+
+    // Support for both Profile Mode and New Client Mode
+    let name = document.getElementById('clientName').innerText;
+    let idDisplay = document.getElementById('clientIdDisplay').innerText;
+    let cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('mode') === 'new' || name === "Cargando cliente...") {
+        name = document.getElementById('regName').value;
+        cedula = document.getElementById('regId').value;
+    }
 
     const kycBtn = document.getElementById('kycMainBtn');
     const container = document.getElementById('kycResultsContainer');
 
-    if (name === "Cargando cliente...") {
-        alert("Por favor, espera a que cargue el perfil del cliente.");
+    if (!name || name === "Cargando cliente...") {
+        alert("Por favor, ingresa el Nombre del cliente para realizar la auditoría.");
         return;
     }
 
