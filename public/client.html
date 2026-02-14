@@ -9,6 +9,8 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
         .profile-header {
             background: white;
@@ -130,10 +132,31 @@
                         <input type="text" id="regId" class="btn-secondary"
                             style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="001-..." required>
                     </div>
-                    <button type="button" class="btn btn-secondary" onclick="triggerScan('id')"
-                        style="padding: 0.75rem; min-height: 48px; border-radius: 12px; display: flex; align-items: center; gap: 0.5rem;">
-                        <span>📷</span> <small>Escanear</small>
-                    </button>
+                </div>
+                <div>
+                    <label>Nacionalidad</label>
+                    <input type="text" id="regNationality" class="btn-secondary"
+                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Dominicana">
+                </div>
+                <div
+                    style="grid-column: span 2; background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: 12px; border: 1px dashed var(--primary-color);">
+                    <p style="margin-top:0; font-weight:600; font-size: 0.9rem; color: var(--primary-color);">⚡
+                        Autocompletar con OCR</p>
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="button" class="btn btn-secondary" onclick="triggerIDScan('front')"
+                            style="flex: 1; font-size: 0.8rem; height: 40px;">📷 Frente Cédula</button>
+                        <button type="button" class="btn btn-secondary" onclick="triggerIDScan('back')"
+                            style="flex: 1; font-size: 0.8rem; height: 40px;">📷 Reverso Cédula</button>
+                    </div>
+                    <div id="ocrStatus"
+                        style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--text-secondary); display: none;">
+                        ⏳ <span id="ocrStatusText">Procesando...</span>
+                    </div>
+                    <!-- Hidden inputs -->
+                    <input type="file" id="idFrontInput" accept="image/*" style="display:none;"
+                        onchange="handleIDFile(this, 'front')">
+                    <input type="file" id="idBackInput" accept="image/*" style="display:none;"
+                        onchange="handleIDFile(this, 'back')">
                 </div>
                 <div>
                     <label>Fecha de Nacimiento</label>
@@ -370,7 +393,12 @@
                 <div id="fichaTecnicaSection" class="card glass" style="margin-bottom: 2rem; display: none;">
                     <div
                         style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h3 style="margin:0;">👤 Ficha Técnica Completa</h3>
+                        <div style="display: flex; align-items: center; gap: 1rem;">
+                            <h3 style="margin:0;">👤 Ficha Técnica Completa</h3>
+                            <button class="btn" onclick="downloadFichaPDF()"
+                                style="background: var(--primary-color); color: white; padding: 0.3rem 0.8rem; font-size: 0.8rem; border-radius: 6px;">📄
+                                PDF</button>
+                        </div>
                         <button class="btn"
                             onclick="document.getElementById('fichaTecnicaSection').style.display='none'"
                             style="font-size: 0.8rem;">Cerrar ✕</button>
