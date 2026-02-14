@@ -1,24 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Clientes rules
-    match /clientes/{clienteId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Prestamos rules
-    match /prestamos/{prestamoId} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Referidores rules
-    match /referidores/{referidorId} {
-      allow read, write: if request.auth != null;
-    }
-
-    // Default catch-all (locked for security)
+    // Temporarily open for testing (No Auth implemented yet)
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }

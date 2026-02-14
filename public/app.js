@@ -2,7 +2,7 @@ const db = firebase.firestore();
 const functions = firebase.functions();
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v4 (Expediente Digital Fixes)");
+    console.log("VYJ Capital Interface Loaded - v5 (Expert Guarantee AI)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
@@ -657,10 +657,12 @@ async function processOCR(file, type) {
 
     try {
         const base64 = await toBase64(file);
+        const mimeType = base64.split(';')[0].split(':')[1];
         const scanDocument = firebase.functions().httpsCallable('scanDocument');
         const result = await scanDocument({
             image: base64.split(',')[1],
-            docType: type
+            docType: type,
+            mimeType: mimeType
         });
 
         const data = result.data;

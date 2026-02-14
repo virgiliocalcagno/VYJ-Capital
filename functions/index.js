@@ -238,7 +238,7 @@ async function procesarComisionReferidor(loanId, interestPaid) {
 
 // --- 7. AI OCR: Scan Document with Gemini ---
 exports.scanDocument = functions.https.onCall(async (data, context) => {
-    const { image, docType } = data; // image is base64
+    const { image, docType, mimeType } = data; // image is base64, mimeType optional
     if (!image) throw new functions.https.HttpsError('invalid-argument', 'No image provided');
 
     try {
@@ -260,14 +260,20 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
             RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
             { "nombre": "...", "cedula": "...", "fecha_nacimiento": "...", "sexo": "..." }`;
         } else if (docType === 'guarantee') {
-            prompt = `Actúa como Perito Valuador de Garantías Prendarias.
-            TU MISIÓN: Analizar la imagen (vehículo, factura o propiedad) para dar un informe técnico breve.
+            prompt = `Actúa como Perito Valuador y Analista de Documentos Legales de Garantía.
+            TU MISIÓN: Analizar exhaustivamente el documento o imagen para extraer detalles técnicos y legales.
             
-            REGLAS:
-            - Descripción: Incluye marca, modelo, año o condición si es visible.
-            - Valor Estimado: Un número basado en el mercado actual o lo que indique el documento.
+            TIPOS DE DOCUMENTO:
+            - MATRÍCULA: Extrae Marca, Modelo, Año, Chasis, Placa, Color y Propietario.
+            - ACTO DE VENTA / CONTRATO: Extrae las partes (Vendedor/Comprador), el objeto del contrato y el precio.
+            - PAGARÉ NOTORIAL: Extrae el monto de la deuda, el deudor y los plazos si son visibles.
+            - FACTURA: Extrae el comercio, fecha y monto total.
             
-            RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
+            REGLAS DE SALIDA:
+            - Descripción: Crea un resumen detallado y profesional que incluya TODO lo relevante encontrado (ej: "Matrícula de Honda Civic 2018, Placa A12345, Chasis...").
+            - Valor Estimado: Si el documento tiene un valor monetario o precio de venta, ponlo aquí como número.
+            
+            RESPONDER ÚNICAMENTE EN JSON:
             { "descripcion": "...", "valor_estimado": 0.00 }`;
         }
 
@@ -275,7 +281,7 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
             contents: [{
                 role: 'user',
                 parts: [
-                    { inlineData: { mimeType: 'image/jpeg', data: image } },
+                    { inlineData: { mimeType: mimeType || 'image/jpeg', data: image } },
                     { text: prompt }
                 ]
             }]
