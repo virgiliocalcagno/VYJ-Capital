@@ -550,45 +550,52 @@ window.searchClient = async function () {
 let currentScanType = null;
 let currentClientIdForUpload = null;
 
-function triggerUpload() {
+window.triggerUpload = function () {
     currentClientIdForUpload = new URLSearchParams(window.location.search).get('id');
     if (!currentClientIdForUpload) {
         alert("Error: No hay cliente seleccionado.");
         return;
     }
-    document.getElementById('docUploadInput').click();
-}
+    const input = document.getElementById('docUploadInput');
+    if (input) input.click();
+    else console.error("Error: Input de carga no encontrado.");
+};
 
 window.triggerScan = function (type) {
     currentScanType = type;
-    document.getElementById('docUploadInput').click();
+    const input = document.getElementById('docUploadInput');
+    if (input) input.click();
+    else console.error("Error: Input de escaneo no encontrado.");
 };
 
-document.getElementById('docUploadInput').addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+const docUploadInput = document.getElementById('docUploadInput');
+if (docUploadInput) {
+    docUploadInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
 
-    if (currentScanType) {
-        const type = currentScanType; // Save type before reset
-        currentScanType = null;
-        const uploadResult = await processOCR(file, type);
+        if (currentScanType) {
+            const type = currentScanType; // Save type before reset
+            currentScanType = null;
+            const uploadResult = await processOCR(file, type);
 
-        // Auto-save scanned file to digital folder
-        const clientId = new URLSearchParams(window.location.search).get('id');
-        if (clientId && uploadResult) {
-            await uploadDocument(file, clientId, `Scan_${type}`);
-        }
-    } else {
-        const clientId = currentClientIdForUpload || new URLSearchParams(window.location.search).get('id');
-        if (clientId) {
-            await uploadDocument(file, clientId);
-            currentClientIdForUpload = null;
+            // Auto-save scanned file to digital folder
+            const clientId = new URLSearchParams(window.location.search).get('id');
+            if (clientId && uploadResult) {
+                await uploadDocument(file, clientId, `Scan_${type}`);
+            }
         } else {
-            alert("Error: No hay cliente seleccionado.");
+            const clientId = currentClientIdForUpload || new URLSearchParams(window.location.search).get('id');
+            if (clientId) {
+                await uploadDocument(file, clientId);
+                currentClientIdForUpload = null;
+            } else {
+                alert("Error: No hay cliente seleccionado.");
+            }
         }
-    }
-    e.target.value = ''; // Reset input
-});
+        e.target.value = ''; // Reset input
+    });
+}
 
 async function uploadDocument(file, clientId, customName = null) {
     const progressContainer = document.getElementById('uploadProgressContainer');
