@@ -243,13 +243,32 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
 
     try {
         const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
-        const model = vertex_ai.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        // Using gemini-2.0-flash as it performs better in NutriApp
+        const model = vertex_ai.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
         let prompt = "";
         if (docType === 'id') {
-            prompt = "Actúa como un experto en OCR de alta precisión para documentos dominicanos (Cédula de identidad). Extrae la siguiente información de la imagen en formato JSON: { 'nombre': 'Nombre completo', 'cedula': 'Número de cédula con guiones', 'fecha_nacimiento': 'YYYY-MM-DD', 'sexo': 'M' o 'F' }. Si no encuentras algo, deja el campo vacío. Solo responde con el JSON puro.";
+            prompt = `Actúa como Procesador de Identidad Dominicano experto (Cédula de Identidad y Electoral). 
+            TU MISIÓN: Extraer datos con PRECISIÓN ABSOLUTA para evitar errores legales.
+            
+            REGLAS:
+            - Nombre: El nombre completo tal cual aparece.
+            - Cédula: El número con sus guiones (ej: 001-0000000-1).
+            - Fecha Nacimiento: Formato YYYY-MM-DD.
+            - Sexo: Solo 'M' o 'F'.
+            
+            RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
+            { "nombre": "...", "cedula": "...", "fecha_nacimiento": "...", "sexo": "..." }`;
         } else if (docType === 'guarantee') {
-            prompt = "Analiza esta imagen de una garantía (vehículo, factura, contrato, etc). Extrae una descripción técnica y un valor estimado si es visible. Responde en formato JSON: { 'descripcion': 'Descripción detallada', 'valor_estimado': 0.00 }. Solo responde con el JSON puro.";
+            prompt = `Actúa como Perito Valuador de Garantías Prendarias.
+            TU MISIÓN: Analizar la imagen (vehículo, factura o propiedad) para dar un informe técnico breve.
+            
+            REGLAS:
+            - Descripción: Incluye marca, modelo, año o condición si es visible.
+            - Valor Estimado: Un número basado en el mercado actual o lo que indique el documento.
+            
+            RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
+            { "descripcion": "...", "valor_estimado": 0.00 }`;
         }
 
         const request = {
@@ -263,13 +282,16 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
         };
 
         const result = await model.generateContent(request);
-        const response = result.response;
-        let text = response.candidates[0].content.parts[0].text;
+        const text = result.response.candidates[0].content.parts[0].text;
 
-        // Clean up markdown code blocks if present
-        text = text.replace(/```json/g, "").replace(/```/g, "").trim();
+        // NutriApp Style: Robust JSON Extraction
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            console.error("AI did not return JSON:", text);
+            throw new Error("La IA no pudo estructurar los datos correctamente.");
+        }
 
-        return JSON.parse(text);
+        return JSON.parse(jsonMatch[0]);
 
     } catch (error) {
         console.error("AI Scan Error:", error);
