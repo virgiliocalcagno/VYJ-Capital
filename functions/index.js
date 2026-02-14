@@ -308,7 +308,10 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
 });
 
 // --- 8. Auditoría Digital (KYC) con IA Grounding ---
-exports.auditoriaKYC_v11 = functions.https.onCall(async (data, context) => {
+exports.auditoriaKYC_v11 = functions.runWith({
+    timeoutSeconds: 120,
+    memory: '256MB'
+}).https.onCall(async (data, context) => {
     const { nombre, cedula } = data;
     if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría');
 
@@ -316,7 +319,7 @@ exports.auditoriaKYC_v11 = functions.https.onCall(async (data, context) => {
         const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
         // Usamos gemini-1.5-flash para el grounding con búsqueda de Google
         const model = vertex_ai.getGenerativeModel({
-            model: 'gemini-2.0-flash',
+            model: 'gemini-1.5-flash',
             tools: [{ googleSearchRetrieval: {} }]
         });
 
