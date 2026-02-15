@@ -914,6 +914,131 @@ window.vincularPerfil = async function (plataforma, url) {
     }
 };
 
+// --- WhatsMyName Digital Audit ---
+window.realizarAuditoriaDigital = async function () {
+    const usernameInput = document.getElementById('wmnUsernameInput');
+    const searchBtn = document.getElementById('wmnSearchBtn');
+    const loadingState = document.getElementById('wmnLoadingState');
+    const loadingText = document.getElementById('wmnLoadingText');
+    const resultsContainer = document.getElementById('wmnResultsContainer');
+    const resultCount = document.getElementById('wmnResultCount');
+    const resultSource = document.getElementById('wmnResultSource');
+    const resultsList = document.getElementById('wmnResultsList');
+
+    const username = usernameInput.value.trim();
+    if (!username) {
+        alert("Por favor ingresa un username para buscar.");
+        return;
+    }
+
+    // UI: Estado de carga
+    searchBtn.disabled = true;
+    searchBtn.innerText = "⏳ Buscando...";
+    loadingState.style.display = 'block';
+    resultsContainer.style.display = 'none';
+    loadingText.innerText = "Iniciando búsqueda en +500 plataformas...";
+
+    try {
+        // 1. Iniciar la búsqueda en la API de WhatsMyName
+        const response = await fetch('https://whatsmyname.ink/api/search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username })
+        });
+
+        if (!response.ok) throw new Error(`Error de API: ${response.status}`);
+
+        const { queryId } = await response.json();
+        console.log(`WhatsMyName búsqueda iniciada. ID: ${queryId}`);
+        loadingText.innerText = `Búsqueda activa (ID: ${queryId})... Consultando resultados...`;
+
+        // 2. Poll los resultados cada 3 segundos (timeout 90s)
+        const MAX_POLLS = 30; // 30 * 3s = 90s max
+        let pollCount = 0;
+
+        const pollResults = () => new Promise((resolve, reject) => {
+            const interval = setInterval(async () => {
+                pollCount++;
+                loadingText.innerText = `Consultando resultados... (intento ${pollCount}/${MAX_POLLS})`;
+
+                try {
+                    const statusRes = await fetch(`https://whatsmyname.ink/api/search?id=${queryId}`);
+                    if (!statusRes.ok) throw new Error(`Poll error: ${statusRes.status}`);
+                    const data = await statusRes.json();
+
+                    if (data.status === 'completed') {
+                        clearInterval(interval);
+                        resolve(data);
+                    } else if (pollCount >= MAX_POLLS) {
+                        clearInterval(interval);
+                        reject(new Error("La búsqueda tardó demasiado. Intenta nuevamente."));
+                    }
+                } catch (pollError) {
+                    clearInterval(interval);
+                    reject(pollError);
+                }
+            }, 3000);
+        });
+
+        const data = await pollResults();
+
+        // 3. Filtrar solo los perfiles encontrados ("hit")
+        const perfilesEncontrados = (data.results || []).filter(r => r.status === 'hit');
+
+        // 4. Renderizar resultados
+        loadingState.style.display = 'none';
+        resultsContainer.style.display = 'block';
+        resultCount.innerText = `✅ ${perfilesEncontrados.length} perfiles encontrados`;
+        resultSource.innerText = `@${username} · WhatsMyName`;
+
+        if (perfilesEncontrados.length === 0) {
+            resultsList.innerHTML = `<p style="text-align:center; color:var(--text-secondary); font-size:0.85rem; padding:1rem;">No se encontraron perfiles para este username.</p>`;
+        } else {
+            resultsList.innerHTML = perfilesEncontrados.map(p => `
+                <a href="${p.url || p.uri || '#'}" target="_blank" rel="noopener noreferrer"
+                    style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:var(--text-primary); transition: transform 0.1s;"
+                    onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
+                    <span style="font-size:0.8rem; font-weight:500;">${p.name || p.site || 'Desconocido'}</span>
+                    <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
+                </a>
+            `).join('');
+        }
+
+        // 5. Guardar en Firebase bajo el documento del cliente
+        const clientId = new URLSearchParams(window.location.search).get('id');
+        if (clientId) {
+            try {
+                await db.collection('clientes').doc(clientId).update({
+                    auditoriaDigital: {
+                        username: username,
+                        fecha: new Date().toISOString(),
+                        perfiles: perfilesEncontrados.map(p => ({
+                            nombre: p.name || p.site || 'Desconocido',
+                            url: p.url || p.uri || '',
+                            categoria: p.category || ''
+                        })),
+                        total: perfilesEncontrados.length
+                    }
+                });
+                console.log("Auditoría WhatsMyName guardada en Firebase.");
+                resultSource.innerText += ` · 💾 Guardado`;
+            } catch (saveError) {
+                console.error("Error guardando auditoría en Firebase:", saveError);
+            }
+        }
+
+    } catch (error) {
+        console.error("WhatsMyName Error:", error);
+        loadingState.style.display = 'none';
+        resultsContainer.style.display = 'block';
+        resultCount.innerText = "❌ Error en la búsqueda";
+        resultsList.innerHTML = `<p style="color:var(--danger-color); font-size:0.85rem; padding:0.5rem;">${error.message}</p>`;
+    } finally {
+        searchBtn.disabled = false;
+        searchBtn.innerText = "🔎 Buscar";
+    }
+};
+
 function toBase64(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
