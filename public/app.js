@@ -467,10 +467,12 @@ async function loadClientProfile(id) {
 
         if (personal) {
             personal.innerHTML = `
-                <p><strong>Nacimiento:</strong> ${client.fecha_nacimiento || 'N/A'} (${client.lugar_nacimiento || 'N/A'})</p>
-                <p><strong>Sexo:</strong> ${client.sexo || 'N/A'}</p>
-                <p><strong>Estado Civil:</strong> ${client.estado_civil || 'N/A'}</p>
-                <p><strong>Email:</strong> ${client.email || 'N/A'}</p>
+                <div class="flex-column gap-1">
+                    <p><strong class="text-secondary">Nacimiento:</strong> ${client.fecha_nacimiento || 'N/A'} (${client.lugar_nacimiento || 'N/A'})</p>
+                    <p><strong class="text-secondary">Sexo:</strong> ${client.sexo || 'N/A'}</p>
+                    <p><strong class="text-secondary">Estado Civil:</strong> ${client.estado_civil || 'N/A'}</p>
+                    <p><strong class="text-secondary">Email:</strong> ${client.email || 'N/A'}</p>
+                </div>
             `;
         }
         if (laboral) {
@@ -633,53 +635,55 @@ async function loadClientProfile(id) {
 
 function renderLoanCard(loanId, loan, container) {
     const isMora = loan.estado === 'MORA';
-    const borderColor = isMora ? 'var(--danger-color)' : 'var(--success-color)';
-    const moraText = isMora ? `MORA: ${formatCurrency(loan.mora_acumulada)}` : 'Al día';
+    const statusClass = isMora ? 'status-overdue' : 'status-active';
+    const statusText = isMora ? `MORA: ${formatCurrency(loan.mora_acumulada)}` : 'Al día';
 
     const html = `
-    <div class="card" style="border-left: 5px solid ${borderColor}; margin-bottom: 1rem;">
-        <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: flex-start;">
+    <div class="card mb-1">
+        <div class="flex-between mb-1">
             <div>
-                <h3 style="margin: 0;">Préstamo #${loanId.substr(0, 5)}</h3>
-                <small class="text-secondary">Vence: ${loan.proximo_pago ? new Date(loan.proximo_pago.seconds * 1000).toLocaleDateString() : 'N/A'}</small>
+                <h3 class="mt-1">Préstamo #${loanId.substr(0, 5)}</h3>
+                <small class="text-muted">Vence: ${loan.proximo_pago ? new Date(loan.proximo_pago.seconds * 1000).toLocaleDateString() : 'N/A'}</small>
             </div>
-            <span class="status-badge ${isMora ? 'status-mora' : 'status-active'}">${moraText}</span>
+            <span class="status-badge ${statusClass}">${statusText}</span>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; background: #f9fafb; padding: 1rem; border-radius: 8px;">
+        <div class="grid-2 gap-2 mb-1" style="background: var(--bg-main); padding: 1.25rem; border-radius: 8px;">
             <div>
-                <small style="color: var(--text-secondary);">Capital Pendiente</small>
-                <div style="font-weight: 700; font-size: 1.1rem;">${formatCurrency(loan.capital_actual)}</div>
+                <small class="text-muted">Capital Pendiente</small>
+                <div style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary);">${formatCurrency(loan.capital_actual)}</div>
             </div>
             <div>
-                <small style="color: var(--text-secondary);">Interés Pendiente</small>
-                <div style="font-weight: 700;">${formatCurrency(loan.interes_pendiente || 0)}</div>
+                <small class="text-muted">Interés Pendiente</small>
+                <div style="font-weight: 700; color: var(--text-primary);">${formatCurrency(loan.interes_pendiente || 0)}</div>
             </div>
-            <div>
-                <small style="color: var(--danger-color);">Mora Acumulada</small>
-                <div style="font-weight: 700; color: var(--danger-color);">${formatCurrency(loan.mora_acumulada || 0)}</div>
+            <div class="span-2" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
+                <small style="color: var(--danger); font-weight: 700;">Mora Acumulada</small>
+                <div style="font-weight: 800; color: var(--danger); font-size: 1.1rem;">${formatCurrency(loan.mora_acumulada || 0)}</div>
             </div>
         </div>
 
-        <!-- Ficha Data (Guarantor) -->
-        <div style="margin-bottom: 1.5rem;">
-            <details>
-                <summary style="cursor: pointer; color: var(--primary-color); font-weight: 500;">Ver Datos de Ficha</summary>
-                <div style="margin-top: 1rem; font-size: 0.9rem;">
-                    <p><strong>🚗 Garantía:</strong> ${loan.garantia_desc || 'No registrada'}</p>
+        <div class="mb-2">
+            <details style="cursor: pointer;">
+                <summary style="color: var(--primary); font-weight: 700; font-size: 0.85rem;">Ver Detalles de Garantía</summary>
+                <div class="mt-1" style="font-size: 0.9rem; padding: 0.75rem; background: #fff; border: 1px solid var(--border); border-radius: 6px;">
+                    <p><strong>🚗 Garantía:</strong> ${loan.garantia?.descripcion || loan.garantia_desc || 'No registrada'}</p>
                     <p><strong>👤 Fiador:</strong> ${loan.fiador_nombre || 'No registrado'}</p>
                 </div>
             </details>
         </div>
 
-        <!-- Individual Actions -->
-        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-            <button class="btn btn-primary" onclick="openPaymentModal('${loanId}', ${loan.capital_actual}, ${loan.interes_pendiente || 0}, ${loan.mora_acumulada || 0})">💰 Registrar Cobro</button>
-            <button class="btn" style="border: 1px solid var(--text-secondary); color: var(--text-secondary);">📄 Tabla</button>
+        <div class="flex-between" style="gap: 0.75rem;">
+            <button class="btn btn-primary w-full" onclick="openPaymentModal('${loanId}', ${loan.capital_actual}, ${loan.interes_pendiente || 0}, ${loan.mora_acumulada || 0})">
+                💰 Registrar Cobro
+            </button>
+            <button class="btn btn-secondary" style="border: none;">
+                📄 Tabla
+            </button>
         </div>
     </div>
     `;
-    container.innerHTML += html;
+    container.insertAdjacentHTML('beforeend', html);
 }
 
 // Make global for inline onclick
@@ -964,38 +968,50 @@ window.runKYCAuditV9 = async function () {
         const data = result.data;
         console.log("KYC resultado:", data);
 
-        // 5. Renderizar Resumen con nivel de riesgo
-        const riskColors = { 'BAJO': '#22c55e', 'MEDIO': '#f59e0b', 'ALTO': '#ef4444', 'INDETERMINADO': '#6b7280' };
-        const riskColor = riskColors[data.nivel_riesgo] || riskColors['INDETERMINADO'];
+        // 5. Renderizar Resumen con Estilo Checklist
+        const riskLevel = data.nivel_riesgo || 'INDETERMINADO';
+        const riskStyles = {
+            'BAJO': { bg: '#f0fdf4', text: '#166534', icon: '✅' },
+            'MEDIO': { bg: '#fffbeb', text: '#92400e', icon: '⚠️' },
+            'ALTO': { bg: '#fef2f2', text: '#991b1b', icon: '🛑' },
+            'INDETERMINADO': { bg: '#f9fafb', text: '#374151', icon: '❓' }
+        };
+        const style = riskStyles[riskLevel] || riskStyles['INDETERMINADO'];
 
         summaryEl.innerHTML = `
-            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
-                <span style="background:${riskColor}; color:white; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.7rem; font-weight:700;">
-                    RIESGO ${data.nivel_riesgo || 'N/A'}
-                </span>
-                <small style="color:var(--text-secondary);">Fuente: ${data._source === 'grounded' ? '🌐 Google Search' : '🤖 IA'}</small>
+            <div style="background:${style.bg}; border:1px solid ${style.text}44; padding:1rem; border-radius:8px; margin-bottom:1rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem; color:${style.text}; font-weight:800; font-size:0.9rem;">
+                    <span>${style.icon}</span> NIVEL DE RIESGO: ${riskLevel}
+                </div>
+                <p style="margin:0; font-size:0.875rem; color:${style.text}; font-weight:500;">${data.resumen_riesgo || 'Análisis completado.'}</p>
             </div>
-            <p style="margin:0; font-size:0.85rem;">${data.resumen_riesgo || 'Análisis completado sin detalles.'}</p>
         `;
 
-        // 6. Renderizar Enlaces (LinkedIn, FB, etc.)
+        // 6. Hallazgos como Checklist (Sugerencia UX #2)
+        badgesEl.innerHTML = `
+            <div style="border-top:1px solid var(--border); padding-top:1rem; margin-top:1rem;">
+                <h5 style="font-size:0.75rem; font-weight:800; text-transform:uppercase; margin-bottom:0.75rem; color:var(--text-secondary);">✓ Puntos Verificados:</h5>
+                <div style="display:grid; gap:0.5rem;">
+                    ${(data.hallazgos_clave || []).map(h => `
+                        <div style="display:flex; align-items:center; gap:0.5rem; font-size:0.85rem; font-weight:600; color:var(--text-primary);">
+                            <span style="color:var(--success);">✔</span> ${h}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+
+        // 7. Enlaces vinculables
         linksEl.innerHTML = (data.perfiles_encontrados || []).map(p => `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem; border-radius:6px; border:1px solid #eee;">
-                <a href="${p.url}" target="_blank" style="font-size:0.8rem; color:#1f2937; text-decoration:none;">
+            <div class="flex-between mb-1" style="border:1px solid var(--border); padding:0.75rem 1rem; border-radius:10px; background: white;">
+                <a href="${p.url}" target="_blank" style="font-size:0.9rem; color:var(--primary); text-decoration:none; font-weight:800;">
                     ${p.plataforma} ${p.coincidencia_alta ? '⭐' : ''}
                 </a>
                 <button onclick="vincularPerfil('${p.plataforma}', '${p.url}')" 
-                    style="font-size:0.7rem; color:var(--primary-color); background:none; border:none; cursor:pointer; font-weight:600;">
-                    Vincular
+                    class="btn btn-secondary" style="font-size:0.7rem; padding:0.4rem 0.6rem; border-radius:8px;">
+                    VINCULAR
                 </button>
             </div>
-        `).join('');
-
-        // 7. Renderizar Hallazgos Clave
-        badgesEl.innerHTML = (data.hallazgos_clave || []).map(h => `
-            <span style="background:rgba(59, 130, 246, 0.1); color:var(--primary-color); padding:0.25rem 0.6rem; border-radius:20px; font-size:0.7rem; font-weight:500;">
-                ${h}
-            </span>
         `).join('');
 
     } catch (error) {
@@ -1076,14 +1092,15 @@ window.realizarAuditoriaDigital = async function () {
 
         const perfiles = data.perfiles || [];
         if (perfiles.length === 0) {
-            resultsList.innerHTML = `<p style="text-align:center; color:var(--text-secondary); font-size:0.85rem; padding:1rem;">No se encontraron perfiles para @${username}.</p>`;
+            resultsList.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.875rem; padding:2rem; background:var(--bg-main); border-radius:12px;">No se encontraron perfiles públicos para @${username}.</p>`;
         } else {
             resultsList.innerHTML = perfiles.map(p => `
                 <a href="${p.url}" target="_blank" rel="noopener noreferrer"
-                    style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:#1f2937; transition: transform 0.1s;"
-                    onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
-                    <span style="font-size:0.8rem; font-weight:500;">${p.plataforma}</span>
-                    <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
+                    style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); padding:0.875rem 1rem; border-radius:10px; text-decoration:none; color:var(--text-primary); margin-bottom:0.5rem; transition: background 0.2s, transform 0.2s; background: white;"
+                    onmouseover="this.style.background='#f1f5f9'; this.style.transform='translateX(4px)';" 
+                    onmouseout="this.style.background='white'; this.style.transform='none';">
+                    <span style="font-size:0.9rem; font-weight:700;">${p.plataforma}</span>
+                    <span style="font-size:0.75rem; color:var(--primary); font-weight:800; letter-spacing: 0.05em;">VER PERFIL ↗</span>
                 </a>
             `).join('');
         }
@@ -1238,10 +1255,10 @@ window.renderClientsGrid = function (clients) {
                     <p>📍 ${client.direccion || 'Sin dirección'}</p>
                 </div>
                 <div class="client-actions">
-                    <button class="btn btn-secondary" style="flex:1; font-size:0.8rem;" onclick="window.location.href='client.html?id=${client.id}'">
+                    <button class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="window.location.href='client.html?id=${client.id}'">
                         👁️ Ver
                     </button>
-                    <button class="btn" style="flex:1; font-size:0.8rem; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2;" onclick="deleteClient('${client.id}', '${client.nombre}')">
+                    <button class="btn" style="flex:1; font-size:0.85rem; background:rgba(239, 68, 68, 0.1); color:var(--danger); border:1px solid rgba(239, 68, 68, 0.2);" onclick="deleteClient('${client.id}', '${client.nombre}')">
                         🗑️ Borrar
                     </button>
                 </div>

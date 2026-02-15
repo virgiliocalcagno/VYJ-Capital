@@ -13,66 +13,76 @@
 
 <body>
     <div class="dashboard-container">
-        <header class="glass">
-            <h1>VYJ Capital</h1>
+        <header class="flex-between">
+            <div>
+                <h1 style="color: var(--primary);">VYJ CAPITAL</h1>
+                <div style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-secondary);">
+                    SISTEMA DE GESTIÓN FINANCIERA</div>
+            </div>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
-                    <span>➕</span> Nuevo Cliente
-                </button>
+                <span class="status-badge status-active">Online</span>
             </div>
         </header>
 
-        <section class="metrics-grid">
-            <div class="card primary">
-                <div class="card-title">Capital en Calle</div>
-                <div class="card-value" id="totalCapital">$0.00</div>
+        <div class="quick-actions grid-2 gap-1 mb-2">
+            <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
+                <span>➕</span> REGISTRAR CLIENTE
+            </button>
+            <button class="btn btn-secondary" onclick="window.location.href='clientes.html'">
+                <span>🗂️</span> CARTERA COMPLETA
+            </button>
+        </div>
+
+        <section class="metrics-grid mb-2">
+            <div class="card" style="border-top: 4px solid var(--primary);">
+                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Capital
+                    en Calle</div>
+                <div class="card-value" id="totalCapital" style="color: var(--primary);">$0.00</div>
             </div>
-            <div class="card warning">
-                <div class="card-title">Intereses por Cobrar</div>
-                <div class="card-value" id="totalInterest">$0.00</div>
+            <div class="card" style="border-top: 4px solid #f59e0b;">
+                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">
+                    Intereses por Cobrar</div>
+                <div class="card-value" id="totalInterest" style="color: #b45309;">$0.00</div>
             </div>
-            <div class="card danger">
-                <div class="card-title">Mora Acumulada</div>
-                <div class="card-value" id="totalMora">$0.00</div>
+            <div class="card" style="border-top: 4px solid var(--danger);">
+                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Mora
+                    Acumulada</div>
+                <div class="card-value" id="totalMora" style="color: var(--danger);">$0.00</div>
             </div>
         </section>
 
-        <h2 class="section-title"><span>⚠️</span> Lista de Mora Crítica</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin: 3rem 0 1rem; text-transform: uppercase;">⚠️ Mora
+            Crítica</h2>
         <div class="table-container">
             <table id="moraTable">
                 <thead>
                     <tr>
                         <th>Cliente</th>
-                        <th>Préstamo ID</th>
-                        <th>Días Vencido</th>
-                        <th>Mora Acumulada</th>
+                        <th>Préstamo</th>
+                        <th>Días</th>
+                        <th>Mora</th>
                         <th>Acción</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Populated by JS -->
                     <tr>
-                        <td colspan="5" style="text-align: center; color: var(--text-secondary);">Cargando...</td>
+                        <td colspan="5" style="text-align: center; padding: 2rem;">Cargando...</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-        <section style="margin-top: 2rem; border-top: 1px solid #e5e7eb; padding-top: 2rem;">
-            <h2 class="section-title">Gestión de Clientes</h2>
-            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
-                <div style="flex-grow: 1; display: flex; gap: 0.5rem;">
-                    <input type="text" id="searchInput" placeholder="Buscar por Nombre o Cédula..."
-                        style="flex-grow:1; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
-                    <button class="btn btn-primary" onclick="searchClient()">🔍 Buscar</button>
-                </div>
-                <!-- Seed Data Button (Temporary) -->
-                <button id="seedBtn" class="btn" style="background-color: #7c3aed; color: white;"
-                    onclick="seedDatabase()">🛠️ Crear Datos de Prueba</button>
-                <button class="btn btn-primary" style="background-color: var(--primary-color);"
-                    onclick="window.location.href='clientes.html'">🗂️ Ver Cartera Complea</button>
-                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">➕ Nuevo
-                    Cliente</button>
+        <section class="mt-2" style="border-top: 1px solid var(--border); padding-top: 2rem;">
+            <h2
+                style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-primary); text-transform: uppercase;">
+                🔎 Búsqueda de Clientes</h2>
+            <div class="flex-between" style="gap: 1rem;">
+                <input type="text" id="searchInput" placeholder="Nombre o Cédula..."
+                    style="flex-grow:1; border-radius: 12px; height: 50px;">
+                <button class="btn btn-primary" onclick="searchClient()"
+                    style="height: 50px; padding: 0 2rem;">BUSCAR</button>
+                <button id="seedBtn" class="btn btn-secondary" onclick="seedDatabase()"
+                    style="height: 50px;">Prueba</button>
             </div>
         </section>
     </div>

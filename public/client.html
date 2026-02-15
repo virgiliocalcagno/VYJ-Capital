@@ -11,109 +11,12 @@
     <link rel="stylesheet" href="style.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <style>
-        .profile-header {
-            background: white;
-            padding: 2rem;
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow-sm);
-            margin-bottom: 2rem;
-            display: flex;
-            align-items: center;
-            gap: 2rem;
-        }
-
-        .profile-avatar {
-            width: 80px;
-            height: 80px;
-            background: #e5e7eb;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            color: var(--text-secondary);
-        }
-
-        .profile-info h2 {
-            margin: 0;
-            color: var(--text-primary);
-        }
-
-        .profile-info p {
-            margin: 0.25rem 0 0;
-            color: var(--text-secondary);
-        }
-
-        .evidence-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 1.5rem;
-            margin-top: 1rem;
-        }
-
-        .evidence-item {
-            background: white;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 1px solid #e5e7eb;
-            transition: transform 0.2s;
-            cursor: pointer;
-        }
-
-        .evidence-item:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-md);
-        }
-
-        .evidence-preview {
-            height: 150px;
-            background: #f3f4f6;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-        }
-
-        .evidence-preview img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .evidence-preview span {
-            font-size: 2rem;
-        }
-
-        .evidence-meta {
-            padding: 0.75rem;
-            font-size: 0.875rem;
-        }
-
-        .evidence-name {
-            font-weight: 600;
-            margin-bottom: 0.25rem;
-            display: block;
-        }
-
-        .evidence-date {
-            color: var(--text-secondary);
-            font-size: 0.75rem;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
-            }
-        }
-    </style>
 </head>
 
 <body>
     <div class="dashboard-container">
-        <header style="display: flex; justify-content: space-between; align-items: center;">
-            <a href="index.html" class="btn"
-                style="background: transparent; color: var(--text-secondary); padding-left: 0;">← Volver al
+        <header class="flex-between">
+            <a href="index.html" class="btn btn-secondary" style="border: none; background: transparent;">← Volver al
                 Dashboard</a>
             <button id="editProfileBtn" class="btn btn-secondary" style="display: none;" onclick="enableEditMode()">
                 <span>✏️</span> Editar Datos del Cliente
@@ -121,31 +24,34 @@
         </header>
 
         <!-- New Client Form (Hidden by default) -->
-        <div id="newClientFormSection" class="card glass" style="display:none; margin-bottom:2rem;">
+        <div id="newClientFormSection" class="card mb-2" style="display:none;">
             <h2 class="section-title"><span>📝</span> Expediente de Nuevo Cliente</h2>
-            <form id="createClientForm" style="display:grid; gap:1.25rem; grid-template-columns: 1fr 1fr;">
+            <form id="createClientForm" class="grid-2">
 
                 <!-- Sección 1: Datos Personales -->
-                <div
-                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 0.5rem;">
-                    <h4 style="margin:0; color: var(--primary-color);">👤 Datos Personales</h4>
+                <div class="span-2"
+                    style="border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; font-weight: 900; text-transform: uppercase; color: var(--primary);">👤 Datos
+                        Personales</h4>
                 </div>
                 <div style="grid-column: span 2;">
-                    <label>Nombre Completo</label>
-                    <input type="text" id="regName" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Maria Perez" required>
+                    <label
+                        style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Nombre
+                        Completo</label>
+                    <input type="text" id="regName" placeholder="Ej: Maria Perez" required>
                 </div>
                 <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
                     <div style="flex-grow: 1;">
-                        <label>Cédula / Pasaporte</label>
-                        <input type="text" id="regId" class="btn-secondary"
-                            style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="001-..." required>
+                        <label
+                            style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Cédula
+                            / Pasaporte</label>
+                        <input type="text" id="regId" placeholder="001-..." required>
                     </div>
                 </div>
                 <div>
-                    <label>Nacionalidad</label>
-                    <input type="text" id="regNationality" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Dominicana">
+                    <label
+                        style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Nacionalidad</label>
+                    <input type="text" id="regNationality" placeholder="Ej: Dominicana">
                 </div>
                 <div
                     style="grid-column: span 2; background: rgba(59, 130, 246, 0.05); padding: 1rem; border-radius: 12px; border: 1px dashed var(--primary-color);">
@@ -230,9 +136,9 @@
                 </div>
 
                 <!-- Sección 2: Datos Laborales -->
-                <div
-                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin:0; color: var(--primary-color);">💼 Información Laboral</h4>
+                <div class="span-2"
+                    style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary);">💼 Información Laboral</h4>
                 </div>
                 <div>
                     <label>Ocupación / Puesto</label>
@@ -256,9 +162,9 @@
                 </div>
 
                 <!-- Sección 3: Referencias y Fiador -->
-                <div
-                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin:0; color: var(--primary-color);">👥 Referencias y Fiador</h4>
+                <div class="span-2"
+                    style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary);">👥 Referencias y Fiador</h4>
                 </div>
                 <div style="grid-column: span 2;">
                     <p style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;"><strong>Fiador
@@ -299,9 +205,9 @@
                 </div>
 
                 <!-- Sección 4: Información de Garantía -->
-                <div
-                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin:0; color: var(--primary-color);">🚗 Información de Garantía</h4>
+                <div class="span-2"
+                    style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary);">🚗 Información de Garantía</h4>
                 </div>
                 <div>
                     <label>Tipo de Garantía</label>
@@ -332,9 +238,9 @@
                 </div>
 
                 <!-- Sección 5: Préstamo Inicial (Opcional) -->
-                <div
-                    style="grid-column: span 2; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem; display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin:0; color: var(--primary-color);">💰 Préstamo Inicial (Opcional)</h4>
+                <div class="span-2 flex-between"
+                    style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
+                    <h4 style="margin:0; color: var(--primary);">💰 Préstamo Inicial (Opcional)</h4>
                     <label class="switch" style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
                         <input type="checkbox" id="enableInitialLoan"
                             onchange="document.getElementById('initialLoanFields').style.display = this.checked ? 'grid' : 'none'">
@@ -479,10 +385,10 @@
                         <span>🚀</span> Iniciar Auditoría con IA
                     </button>
                     <div id="kycResultsContainer"
-                        style="display: none; background: #f9fafb; color: #1f2937; padding: 1rem; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 1rem;">
+                        style="display: none; background: white; color: var(--text-primary); padding: 1.25rem; border-radius: 8px; border: 2px solid var(--text-primary); margin-bottom: 1.5rem;">
                         <p id="kycSummary" style="font-size: 0.85rem; margin-bottom: 0.75rem; font-style: italic;"></p>
                         <div id="kycLinks" style="display: grid; gap: 0.5rem; margin-bottom: 0.75rem;"></div>
-                        <div id="kycBadges" style="display: flex; flex-wrap: wrap; gap: 0.4rem;"></div>
+                        <div id="kycBadges" style="display: grid; gap: 0.5rem;"></div>
                     </div>
                 </div>
 
@@ -494,12 +400,9 @@
                         Busca el username del cliente en +500 plataformas con WhatsMyName.
                     </p>
 
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
-                        <input type="text" id="wmnUsernameInput" class="btn-secondary"
-                            style="flex: 1; padding: 0.6rem 0.75rem; border-radius: 8px; font-size: 0.85rem;"
-                            placeholder="Ej: juan.perez123">
-                        <button class="btn btn-primary" id="wmnSearchBtn" onclick="realizarAuditoriaDigital()"
-                            style="white-space: nowrap; font-size: 0.8rem; padding: 0.6rem 1rem;">
+                    <div style="display: flex; gap: 0.75rem; margin-bottom: 1rem;">
+                        <input type="text" id="wmnUsernameInput" style="flex: 1;" placeholder="Ej: juan.perez123">
+                        <button class="btn btn-primary" id="wmnSearchBtn" onclick="realizarAuditoriaDigital()">
                             🔎 Buscar
                         </button>
                     </div>
@@ -507,7 +410,7 @@
                     <!-- Loading State -->
                     <div id="wmnLoadingState" style="display: none; text-align: center; padding: 1.5rem 0;">
                         <div
-                            style="display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: var(--primary-color); border-radius: 50%; animation: spin 0.8s linear infinite;">
+                            style="display: inline-block; width: 32px; height: 32px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite;">
                         </div>
                         <p id="wmnLoadingText"
                             style="font-size: 0.8rem; color: var(--text-secondary); margin: 0.75rem 0 0;">
@@ -531,11 +434,10 @@
                 <div class="card">
                     <!-- Upload Controls -->
                     <input type="file" id="docUploadInput" style="display: none;" accept="image/*,application/pdf">
-                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 0.5rem;"
+                    <button class="btn btn-primary" style="width: 100%; margin-bottom: 0.75rem;"
                         onclick="document.getElementById('fichaTecnicaSection').style.display='block'">🔎 Ver Ficha
                         Completa</button>
-                    <button class="btn btn-primary"
-                        style="width: 100%; margin-bottom: 1rem; background: #f3f4f6; color: var(--text-primary); border: 1px solid var(--border);"
+                    <button class="btn btn-secondary" style="width: 100%; margin-bottom: 1.5rem;"
                         onclick="triggerUpload()">+ Subir Documento</button>
 
                     <!-- Upload Progress -->
