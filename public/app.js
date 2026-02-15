@@ -457,7 +457,7 @@ async function loadClientProfile(id) {
 
         if (personal) {
             personal.innerHTML = `
-                <p><strong>Nacimiento:</strong> ${client.fecha_nacimiento || 'N/A'}</p>
+                <p><strong>Nacimiento:</strong> ${client.fecha_nacimiento || 'N/A'} (${client.lugar_nacimiento || 'N/A'})</p>
                 <p><strong>Sexo:</strong> ${client.sexo || 'N/A'}</p>
                 <p><strong>Estado Civil:</strong> ${client.estado_civil || 'N/A'}</p>
                 <p><strong>Email:</strong> ${client.email || 'N/A'}</p>
@@ -757,7 +757,7 @@ async function processOCR(file, type) {
             if (data.nombre) document.getElementById('regName').value = data.nombre;
             if (data.cedula) document.getElementById('regId').value = data.cedula;
             if (data.fecha_nacimiento) document.getElementById('regDob').value = data.fecha_nacimiento;
-            if (data.lugar_nacimiento) document.getElementById('regPob').value = data.lugar_nacimiento;
+            if (data.lugar_nacimiento) document.getElementById('regBirthPlace').value = data.lugar_nacimiento;
             if (data.sexo) document.getElementById('regGender').value = data.sexo;
             if (data.direccion) document.getElementById('regAddress').value = data.direccion;
             alert("✅ Información del ID extraída. Si escaneaste el frente, ahora puedes escanear el reverso para la dirección.");

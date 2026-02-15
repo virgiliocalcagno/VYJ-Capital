@@ -346,12 +346,14 @@ exports.auditoriaKYC_v11 = functions.runWith({
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const text = response.text();
+        const text = response.text() || "";
+
+        if (!text) throw new Error("La IA no devolvió ninguna respuesta.");
 
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {
-            console.error("KYC AI did not return JSON:", text);
-            throw new Error("La IA no pudo estructurar la auditoría correctamente.");
+            console.error("KYC AI logic failed to find JSON. Raw text:", text);
+            throw new Error("No se pudo estructurar la información encontrada.");
         }
 
         return JSON.parse(jsonMatch[0]);
