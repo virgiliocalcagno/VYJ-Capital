@@ -19,136 +19,101 @@ window.handleIDFile = async function (input, side) {
 
     statusDiv.style.display = 'block';
     statusMessage.style.display = 'none';
-    statusText.innerText = `Cargando motor de IA...`;
+    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
     statusPercent.innerText = '0%';
     progressBar.style.width = '0%';
 
-    let worker = null;
-
     try {
-        // Inicialización robusta recomendada para Tesseract.js v5
-        worker = await Tesseract.createWorker('spa', 1, {
+        // Volvemos a la llamada más simple que funcionaba perfectamente
+        const { data: { text } } = await Tesseract.recognize(file, 'spa', {
             logger: m => {
                 if (m.status === 'recognizing text') {
                     const progress = Math.round(m.progress * 100);
                     statusPercent.innerText = `${progress}%`;
                     progressBar.style.width = `${progress}%`;
-                    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
                 }
             }
         });
 
-        const { data: { text } } = await worker.recognize(file);
-
-        console.log(`OCR Raw Result (${side}):`, text);
+        console.log(`OCR Result (${side}):`, text);
         document.getElementById('ocrRawText').innerText = text;
         const success = parseOCRResult(text, side);
 
         if (success) {
-            statusText.innerText = `✅ Procesado con éxito.`;
+            statusText.innerText = `✅ Procesado correctamente.`;
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#dcfce7';
             statusMessage.style.color = '#166534';
-            statusMessage.innerText = "¡Excelente! Los datos de la cédula han sido cargados.";
+            statusMessage.innerText = "Datos cargados al formulario.";
         } else {
-            statusText.innerText = `⚠️ No se detectaron datos claros.`;
+            statusText.innerText = `⚠️ No se detectaron campos.`;
             statusMessage.style.display = 'block';
             statusMessage.style.background = '#fef9c3';
             statusMessage.style.color = '#854d0e';
-            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de cédula. Intenta con más luz o sin reflejos.";
+            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de la cédula.";
         }
 
     } catch (error) {
         console.error("OCR Error:", error);
-        statusText.innerText = "❌ Error en el escaneo.";
+        statusText.innerText = "❌ Error de lectura.";
         statusMessage.style.display = 'block';
         statusMessage.style.background = '#fee2e2';
         statusMessage.style.color = '#991b1b';
-        statusMessage.innerText = "Hubo un problema técnico al procesar la imagen.";
+        statusMessage.innerText = "Hubo un fallo al procesar la imagen.";
     } finally {
-        if (worker) await worker.terminate();
-        setTimeout(() => { if (statusDiv.style.display !== 'none') statusDiv.style.display = 'none'; }, 10000);
+        setTimeout(() => { if (statusDiv.style.display !== 'none') statusDiv.style.display = 'none'; }, 6000);
     }
 };
 
 function parseOCRResult(text, side) {
     let foundData = false;
-    const cleanText = text.toUpperCase().replace(/\s+/g, ' ');
-    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-
-    console.log("--- Procesando Cédula Dominicana (" + side + ") ---");
+    const cleanText = text.toUpperCase();
 
     if (side === 'front') {
-        // 1. Cédula - Buscamos CUALQUIER secuencia de 11 dígitos, con o sin basura
-        const idMatch = text.replace(/[^0-9]/g, '').match(/\d{11}/);
+        const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
         if (idMatch) {
-            const rawId = idMatch[0];
-            const formattedId = rawId.substring(0, 3) + '-' + rawId.substring(3, 10) + '-' + rawId.substring(10, 11);
-            document.getElementById('regId').value = formattedId;
+            document.getElementById('regId').value = idMatch[0];
             foundData = true;
-            console.log("Cédula Extraída:", formattedId);
         }
 
-        // 2. Nacionalidad
-        if (cleanText.includes('DOMINICANA') || cleanText.includes('DOM')) {
+        if (cleanText.includes('DOMINICANA')) {
             document.getElementById('regNationality').value = 'República Dominicana';
             foundData = true;
         }
 
-        // 3. Nombre Completo - Lógica Radical
-        // Buscamos líneas que no tengan números y tengan al menos 2 palabras
-        const blacklist = ['REPUBLICA', 'JUNTA', 'CENTRAL', 'ELECTORAL', 'CEDULA', 'IDENTIDAD', 'IDENTIFICACION', 'DIRECCION', 'GENERAL', 'VALIDA', 'HASTA', 'NACIMIENTO', 'LUGAR', 'SEXO'];
-
-        const possibleNames = lines.filter(l => {
-            const up = l.toUpperCase();
-            const words = l.split(/\s+/);
-            const containsBlacklist = blacklist.some(b => up.includes(b));
-            const hasNumbers = /\d/.test(l);
-            return words.length >= 2 && !hasNumbers && !containsBlacklist && l.length > 5;
-        });
-
-        if (possibleNames.length > 0) {
-            // El nombre suele ser la línea con más palabras o en mayúsculas después del encabezado
-            document.getElementById('regName').value = possibleNames[0].toUpperCase();
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
+        const nameCandidates = lines.filter(l =>
+            /^[A-Z\s]{10,}$/.test(l) &&
+            !l.includes('REPUBLICA') &&
+            !l.includes('ELECTORAL') &&
+            !l.includes('JUNTA')
+        );
+        if (nameCandidates.length > 0) {
+            document.getElementById('regName').value = nameCandidates[0];
             foundData = true;
-            console.log("Nombre Extraído:", possibleNames[0]);
         }
 
-        // 4. Fecha Nacimiento - Formato: 01 ENE 1990 o similar
         const monthsMap = {
-            'ENE': '01', 'FEB': '02', 'MAR': '03', 'ABR': '04', 'MAY': '05', 'JUN': '06',
-            'JUL': '07', 'AGO': '08', 'SEP': '09', 'OCT': '10', 'NOV': '11', 'DIC': '12'
+            'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
+            'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
         };
-        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]{3,10})\s+(\d{4})/);
-        if (dobMatch) {
+        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
+        if (dobMatch && monthsMap[dobMatch[2]]) {
             const day = dobMatch[1].padStart(2, '0');
-            const monthPart = dobMatch[2].substring(0, 3);
             const year = dobMatch[3];
-            if (monthsMap[monthPart]) {
-                document.getElementById('regDob').value = `${year}-${monthsMap[monthPart]}-${day}`;
-                foundData = true;
-            }
+            document.getElementById('regDob').value = `${year}-${monthsMap[dobMatch[2]]}-${day}`;
+            foundData = true;
         }
 
-        // 5. Sexo y Estado Civil
-        if (cleanText.includes('SEXO') && cleanText.includes('M')) document.getElementById('regGender').value = 'M';
-        else if (cleanText.includes('SEXO') && cleanText.includes('F')) document.getElementById('regGender').value = 'F';
-
-        if (cleanText.includes('SOLTERO')) document.getElementById('regCivil').value = 'soltero';
-        else if (cleanText.includes('CASADO')) document.getElementById('regCivil').value = 'casado';
+        if (cleanText.includes('SEXO: M') || cleanText.includes('SEXO M')) document.getElementById('regGender').value = 'M';
+        if (cleanText.includes('SEXO: F') || cleanText.includes('SEXO F')) document.getElementById('regGender').value = 'F';
 
     } else if (side === 'back') {
-        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOM') || l.toUpperCase().includes('DOMICILIO'));
+        const lines = text.split('\n');
+        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
         if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
             document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
             foundData = true;
-        } else {
-            const addressPatterns = ['CALLE', 'C/', 'AVE', 'AVENIDA', 'SECTOR', 'PROYECTO', 'RESIDENCIAL'];
-            const foundAddressLine = lines.find(l => addressPatterns.some(p => l.toUpperCase().includes(p)));
-            if (foundAddressLine) {
-                document.getElementById('regAddress').value = foundAddressLine.trim();
-                foundData = true;
-            }
         }
     }
     return foundData;
