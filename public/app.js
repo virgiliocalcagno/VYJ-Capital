@@ -525,7 +525,7 @@ async function loadClientProfile(id) {
                 rs.innerText = `@${ad.username} · ${ad.fecha ? new Date(ad.fecha).toLocaleDateString() : ''}`;
                 rl.innerHTML = ad.perfiles.map(p => `
                     <a href="${p.url}" target="_blank" rel="noopener noreferrer"
-                        style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:var(--text-primary); transition: transform 0.1s;"
+                        style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:#1f2937; transition: transform 0.1s;"
                         onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
                         <span style="font-size:0.8rem; font-weight:500;">${p.plataforma || p.nombre || 'Desconocido'}</span>
                         <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
@@ -903,7 +903,7 @@ window.runKYCAuditV9 = async function () {
         // 6. Renderizar Enlaces (LinkedIn, FB, etc.)
         linksEl.innerHTML = (data.perfiles_encontrados || []).map(p => `
             <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem; border-radius:6px; border:1px solid #eee;">
-                <a href="${p.url}" target="_blank" style="font-size:0.8rem; color:var(--text-primary); text-decoration:none;">
+                <a href="${p.url}" target="_blank" style="font-size:0.8rem; color:#1f2937; text-decoration:none;">
                     ${p.plataforma} ${p.coincidencia_alta ? '⭐' : ''}
                 </a>
                 <button onclick="vincularPerfil('${p.plataforma}', '${p.url}')" 
@@ -1002,7 +1002,7 @@ window.realizarAuditoriaDigital = async function () {
         } else {
             resultsList.innerHTML = perfiles.map(p => `
                 <a href="${p.url}" target="_blank" rel="noopener noreferrer"
-                    style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:var(--text-primary); transition: transform 0.1s;"
+                    style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:#1f2937; transition: transform 0.1s;"
                     onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
                     <span style="font-size:0.8rem; font-weight:500;">${p.plataforma}</span>
                     <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
