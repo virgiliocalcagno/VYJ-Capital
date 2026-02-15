@@ -1033,8 +1033,19 @@ window.realizarAuditoriaDigital = async function () {
         console.error("WhatsMyName Error:", error);
         loadingState.style.display = 'none';
         resultsContainer.style.display = 'block';
-        resultCount.innerText = "❌ Error en la búsqueda";
-        resultsList.innerHTML = `<p style="color:var(--danger-color); font-size:0.85rem; padding:0.5rem;">${error.message}</p>`;
+        resultCount.innerText = "⚠️ Búsqueda automática interrumpida";
+
+        // Fallback robusto: Búsqueda manual en Google (Google Dorking)
+        const googleSearchUrl = `https://www.google.com/search?q=site:instagram.com+OR+site:facebook.com+OR+site:linkedin.com+OR+site:twitter.com+OR+site:tiktok.com+"${username}"`;
+
+        resultsList.innerHTML = `
+            <div style="background:#fff3cd; color:#856404; padding:0.75rem; border-radius:6px; font-size:0.85rem; margin-bottom:0.5rem; border:1px solid #ffeeba;">
+                <p style="margin:0 0 0.5rem 0;">La conexión con WhatsMyName falló (${error.message}).</p>
+                <a href="${googleSearchUrl}" target="_blank" class="btn btn-secondary" style="display:block; text-align:center; text-decoration:none; font-weight:600; font-size:0.8rem;">
+                    🔎 Buscar "${username}" manualmente en Google
+                </a>
+            </div>
+        `;
     } finally {
         searchBtn.disabled = false;
         searchBtn.innerText = "🔎 Buscar";
