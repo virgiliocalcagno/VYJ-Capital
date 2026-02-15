@@ -307,6 +307,61 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
     }
 });
 
+// --- 7.5 WhatsMyName Proxy (evita CORS) ---
+exports.whatsMyNameSearch = functions.runWith({
+    timeoutSeconds: 120,
+    memory: '256MB'
+}).https.onCall(async (data, context) => {
+    const { username } = data;
+    if (!username) throw new functions.https.HttpsError('invalid-argument', 'Falta el username.');
+
+    try {
+        // 1. Iniciar búsqueda
+        console.log(`WhatsMyName: Buscando @${username}...`);
+        const startRes = await axios.post('https://whatsmyname.ink/api/search', { username }, {
+            headers: { 'Content-Type': 'application/json' },
+            timeout: 15000
+        });
+
+        const queryId = startRes.data.queryId;
+        if (!queryId) throw new Error('La API no devolvió un queryId.');
+        console.log(`WhatsMyName: queryId=${queryId}, plataformas=${startRes.data.totalPlatforms}`);
+
+        // 2. Polling (max 30 intentos, cada 3s = 90s máximo)
+        const MAX_POLLS = 30;
+        for (let i = 0; i < MAX_POLLS; i++) {
+            await new Promise(r => setTimeout(r, 3000));
+
+            const pollRes = await axios.get(`https://whatsmyname.ink/api/search?id=${queryId}`, {
+                timeout: 10000
+            });
+
+            if (pollRes.data.status === 'completed') {
+                const hits = (pollRes.data.results || []).filter(r => r.status === 'hit');
+                console.log(`WhatsMyName: Completado. ${hits.length} hits de ${pollRes.data.results.length} plataformas.`);
+                return {
+                    username: username,
+                    total: hits.length,
+                    perfiles: hits.map(h => ({
+                        plataforma: h.platform || h.name || 'Desconocido',
+                        url: h.url || '',
+                        tiempo_ms: h.responseTime || 0
+                    }))
+                };
+            }
+
+            if (pollRes.data.status === 'error') {
+                throw new Error('La API reportó un error durante la búsqueda.');
+            }
+        }
+
+        throw new Error('La búsqueda tardó demasiado (timeout de 90s).');
+    } catch (error) {
+        console.error('WhatsMyName Error:', error.message);
+        throw new functions.https.HttpsError('internal', 'Error en WhatsMyName: ' + error.message);
+    }
+});
+
 // --- 8. Auditoría Digital (KYC) con IA ---
 exports.auditoriaKYC = functions.runWith({
     timeoutSeconds: 120,

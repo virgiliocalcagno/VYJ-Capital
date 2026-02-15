@@ -499,6 +499,41 @@ async function loadClientProfile(id) {
         // 3. Get Documents
         loadClientDocuments(id);
 
+        // 4. Auto-llenar campo de WhatsMyName con nombre del cliente
+        const wmnInput = document.getElementById('wmnUsernameInput');
+        if (wmnInput && client.nombre) {
+            // Convertir nombre a formato username: minúsculas, sin acentos, puntos en vez de espacios
+            const usernameFromName = client.nombre
+                .toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '')  // quitar acentos
+                .replace(/\s+/g, '.');  // espacios → puntos
+            wmnInput.value = usernameFromName;
+        }
+
+        // 5. Si hay auditoría previa, mostrar los resultados guardados
+        if (client.auditoriaDigital && client.auditoriaDigital.perfiles) {
+            const ad = client.auditoriaDigital;
+            if (wmnInput) wmnInput.value = ad.username || wmnInput.value;
+
+            const rc = document.getElementById('wmnResultsContainer');
+            const rl = document.getElementById('wmnResultsList');
+            const rn = document.getElementById('wmnResultCount');
+            const rs = document.getElementById('wmnResultSource');
+            if (rc && rl && rn && rs) {
+                rc.style.display = 'block';
+                rn.innerText = `📋 ${ad.total || ad.perfiles.length} perfiles (auditoría previa)`;
+                rs.innerText = `@${ad.username} · ${ad.fecha ? new Date(ad.fecha).toLocaleDateString() : ''}`;
+                rl.innerHTML = ad.perfiles.map(p => `
+                    <a href="${p.url}" target="_blank" rel="noopener noreferrer"
+                        style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:var(--text-primary); transition: transform 0.1s;"
+                        onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
+                        <span style="font-size:0.8rem; font-weight:500;">${p.plataforma || p.nombre || 'Desconocido'}</span>
+                        <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
+                    </a>
+                `).join('');
+            }
+        }
+
 
         const loansContainer = document.getElementById('loansContainer');
         loansContainer.innerHTML = '';
@@ -914,7 +949,7 @@ window.vincularPerfil = async function (plataforma, url) {
     }
 };
 
-// --- WhatsMyName Digital Audit ---
+// --- WhatsMyName Digital Audit (via Cloud Function Proxy) ---
 window.realizarAuditoriaDigital = async function () {
     const usernameInput = document.getElementById('wmnUsernameInput');
     const searchBtn = document.getElementById('wmnSearchBtn');
@@ -936,75 +971,46 @@ window.realizarAuditoriaDigital = async function () {
     searchBtn.innerText = "⏳ Buscando...";
     loadingState.style.display = 'block';
     resultsContainer.style.display = 'none';
-    loadingText.innerText = "Iniciando búsqueda en +500 plataformas...";
+    loadingText.innerText = "Buscando en +700 plataformas... (puede tomar hasta 90 segundos)";
 
     try {
-        // 1. Iniciar la búsqueda en la API de WhatsMyName
-        const response = await fetch('https://whatsmyname.ink/api/search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username })
-        });
+        // Llamar a Cloud Function proxy (evita CORS)
+        const whatsMyNameSearch = firebase.functions().httpsCallable('whatsMyNameSearch');
 
-        if (!response.ok) throw new Error(`Error de API: ${response.status}`);
+        // Timeout de 120s del lado del cliente
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("La búsqueda tardó demasiado. Intenta de nuevo.")), 120000)
+        );
 
-        const { queryId } = await response.json();
-        console.log(`WhatsMyName búsqueda iniciada. ID: ${queryId}`);
-        loadingText.innerText = `Búsqueda activa (ID: ${queryId})... Consultando resultados...`;
+        const result = await Promise.race([
+            whatsMyNameSearch({ username }),
+            timeoutPromise
+        ]);
 
-        // 2. Poll los resultados cada 3 segundos (timeout 90s)
-        const MAX_POLLS = 30; // 30 * 3s = 90s max
-        let pollCount = 0;
+        const data = result.data;
+        console.log("WhatsMyName resultado:", data);
 
-        const pollResults = () => new Promise((resolve, reject) => {
-            const interval = setInterval(async () => {
-                pollCount++;
-                loadingText.innerText = `Consultando resultados... (intento ${pollCount}/${MAX_POLLS})`;
-
-                try {
-                    const statusRes = await fetch(`https://whatsmyname.ink/api/search?id=${queryId}`);
-                    if (!statusRes.ok) throw new Error(`Poll error: ${statusRes.status}`);
-                    const data = await statusRes.json();
-
-                    if (data.status === 'completed') {
-                        clearInterval(interval);
-                        resolve(data);
-                    } else if (pollCount >= MAX_POLLS) {
-                        clearInterval(interval);
-                        reject(new Error("La búsqueda tardó demasiado. Intenta nuevamente."));
-                    }
-                } catch (pollError) {
-                    clearInterval(interval);
-                    reject(pollError);
-                }
-            }, 3000);
-        });
-
-        const data = await pollResults();
-
-        // 3. Filtrar solo los perfiles encontrados ("hit")
-        const perfilesEncontrados = (data.results || []).filter(r => r.status === 'hit');
-
-        // 4. Renderizar resultados
+        // Renderizar resultados
         loadingState.style.display = 'none';
         resultsContainer.style.display = 'block';
-        resultCount.innerText = `✅ ${perfilesEncontrados.length} perfiles encontrados`;
+        resultCount.innerText = `✅ ${data.total || 0} perfiles encontrados`;
         resultSource.innerText = `@${username} · WhatsMyName`;
 
-        if (perfilesEncontrados.length === 0) {
-            resultsList.innerHTML = `<p style="text-align:center; color:var(--text-secondary); font-size:0.85rem; padding:1rem;">No se encontraron perfiles para este username.</p>`;
+        const perfiles = data.perfiles || [];
+        if (perfiles.length === 0) {
+            resultsList.innerHTML = `<p style="text-align:center; color:var(--text-secondary); font-size:0.85rem; padding:1rem;">No se encontraron perfiles para @${username}.</p>`;
         } else {
-            resultsList.innerHTML = perfilesEncontrados.map(p => `
-                <a href="${p.url || p.uri || '#'}" target="_blank" rel="noopener noreferrer"
+            resultsList.innerHTML = perfiles.map(p => `
+                <a href="${p.url}" target="_blank" rel="noopener noreferrer"
                     style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:var(--text-primary); transition: transform 0.1s;"
                     onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
-                    <span style="font-size:0.8rem; font-weight:500;">${p.name || p.site || 'Desconocido'}</span>
+                    <span style="font-size:0.8rem; font-weight:500;">${p.plataforma}</span>
                     <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
                 </a>
             `).join('');
         }
 
-        // 5. Guardar en Firebase bajo el documento del cliente
+        // Guardar en Firebase bajo el documento del cliente
         const clientId = new URLSearchParams(window.location.search).get('id');
         if (clientId) {
             try {
@@ -1012,12 +1018,8 @@ window.realizarAuditoriaDigital = async function () {
                     auditoriaDigital: {
                         username: username,
                         fecha: new Date().toISOString(),
-                        perfiles: perfilesEncontrados.map(p => ({
-                            nombre: p.name || p.site || 'Desconocido',
-                            url: p.url || p.uri || '',
-                            categoria: p.category || ''
-                        })),
-                        total: perfilesEncontrados.length
+                        perfiles: perfiles,
+                        total: data.total || 0
                     }
                 });
                 console.log("Auditoría WhatsMyName guardada en Firebase.");
