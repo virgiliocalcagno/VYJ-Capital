@@ -19,108 +19,55 @@ window.handleIDFile = async function (input, side) {
 
     statusDiv.style.display = 'block';
     statusMessage.style.display = 'none';
-    statusText.innerText = `Analizando ${side === 'front' ? 'frente' : 'reverso'}...`;
-    statusPercent.innerText = '0%';
-    progressBar.style.width = '0%';
+    statusText.innerText = `Consultando Inteligencia Artificial (NutriApp Engine)...`;
+    statusPercent.innerText = 'IA';
+    progressBar.style.width = '60%';
 
     try {
-        // Volvemos a la llamada más simple que funcionaba perfectamente
-        const { data: { text } } = await Tesseract.recognize(file, 'spa', {
-            logger: m => {
-                if (m.status === 'recognizing text') {
-                    const progress = Math.round(m.progress * 100);
-                    statusPercent.innerText = `${progress}%`;
-                    progressBar.style.width = `${progress}%`;
-                }
-            }
+        const reader = new FileReader();
+        const base64Promise = new Promise((resolve) => {
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.readAsDataURL(file);
+        });
+        const base64 = await base64Promise;
+
+        const scanDocument = firebase.functions().httpsCallable('scanDocument');
+        const result = await scanDocument({
+            image: base64,
+            docType: 'id',
+            mimeType: file.type
         });
 
-        console.log(`OCR Result (${side}):`, text);
-        document.getElementById('ocrRawText').innerText = text;
-        const success = parseOCRResult(text, side);
+        const data = result.data;
+        console.log("IA result:", data);
 
-        if (success) {
-            statusText.innerText = `✅ Procesado correctamente.`;
-            statusMessage.style.display = 'block';
-            statusMessage.style.background = '#dcfce7';
-            statusMessage.style.color = '#166534';
-            statusMessage.innerText = "Datos cargados al formulario.";
-        } else {
-            statusText.innerText = `⚠️ No se detectaron campos.`;
-            statusMessage.style.display = 'block';
-            statusMessage.style.background = '#fef9c3';
-            statusMessage.style.color = '#854d0e';
-            statusMessage.innerText = "La IA leyó texto pero no reconoció el formato de la cédula.";
-        }
+        if (data.cedula) document.getElementById('regId').value = data.cedula;
+        if (data.nombre) document.getElementById('regName').value = data.nombre.toUpperCase();
+        if (data.fecha_nacimiento) document.getElementById('regDob').value = data.fecha_nacimiento;
+        if (data.sexo) document.getElementById('regGender').value = data.sexo;
+        if (data.direccion && side === 'back') document.getElementById('regAddress').value = data.direccion;
+        if (data.lugar_nacimiento) document.getElementById('regBirthPlace').value = data.lugar_nacimiento;
+
+        statusText.innerText = `✅ IA: Procesado correctamente.`;
+        statusMessage.style.display = 'block';
+        statusMessage.innerText = "¡Listo! Gemini AI ha completado el formulario.";
+        progressBar.style.width = '100%';
 
     } catch (error) {
-        console.error("OCR Error:", error);
-        statusText.innerText = "❌ Error de lectura.";
+        console.error("AI Error:", error);
+        statusText.innerText = "❌ Fallo en Gemini AI.";
         statusMessage.style.display = 'block';
-        statusMessage.style.background = '#fee2e2';
-        statusMessage.style.color = '#991b1b';
-        statusMessage.innerText = "Hubo un fallo al procesar la imagen.";
+        statusMessage.innerText = "Error procesando con IA: " + error.message;
+        progressBar.style.width = '0%';
     } finally {
         setTimeout(() => { if (statusDiv.style.display !== 'none') statusDiv.style.display = 'none'; }, 6000);
     }
 };
 
-function parseOCRResult(text, side) {
-    let foundData = false;
-    const cleanText = text.toUpperCase();
-
-    if (side === 'front') {
-        const idMatch = text.match(/\d{3}-\d{7}-\d{1}/);
-        if (idMatch) {
-            document.getElementById('regId').value = idMatch[0];
-            foundData = true;
-        }
-
-        if (cleanText.includes('DOMINICANA')) {
-            document.getElementById('regNationality').value = 'República Dominicana';
-            foundData = true;
-        }
-
-        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 5);
-        const nameCandidates = lines.filter(l =>
-            /^[A-Z\s]{10,}$/.test(l) &&
-            !l.includes('REPUBLICA') &&
-            !l.includes('ELECTORAL') &&
-            !l.includes('JUNTA')
-        );
-        if (nameCandidates.length > 0) {
-            document.getElementById('regName').value = nameCandidates[0];
-            foundData = true;
-        }
-
-        const monthsMap = {
-            'ENERO': '01', 'FEBRERO': '02', 'MARZO': '03', 'ABRIL': '04', 'MAYO': '05', 'JUNIO': '06',
-            'JULIO': '07', 'AGOSTO': '08', 'SEPTIEMBRE': '09', 'OCTUBRE': '10', 'NOVIEMBRE': '11', 'DICIEMBRE': '12'
-        };
-        const dobMatch = cleanText.match(/(\d{1,2})\s+([A-Z]+)\s+(\d{4})/);
-        if (dobMatch && monthsMap[dobMatch[2]]) {
-            const day = dobMatch[1].padStart(2, '0');
-            const year = dobMatch[3];
-            document.getElementById('regDob').value = `${year}-${monthsMap[dobMatch[2]]}-${day}`;
-            foundData = true;
-        }
-
-        if (cleanText.includes('SEXO: M') || cleanText.includes('SEXO M')) document.getElementById('regGender').value = 'M';
-        if (cleanText.includes('SEXO: F') || cleanText.includes('SEXO F')) document.getElementById('regGender').value = 'F';
-
-    } else if (side === 'back') {
-        const lines = text.split('\n');
-        const domicileIndex = lines.findIndex(l => l.toUpperCase().includes('DOMICILIO'));
-        if (domicileIndex !== -1 && lines[domicileIndex + 1]) {
-            document.getElementById('regAddress').value = lines[domicileIndex + 1].trim();
-            foundData = true;
-        }
-    }
-    return foundData;
-}
+function parseOCRResult(text, side) { return true; }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.9 (OCR Stable Revert)");
+    console.log("VYJ Capital Interface Loaded - v12.0 (Gemini AI Implementation)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
