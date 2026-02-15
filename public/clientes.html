@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYJ Capital | Cartera de Clientes</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .clients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .client-card {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 16px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .client-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            border-color: var(--primary-color);
+        }
+
+        .client-card .initials {
+            width: 50px;
+            height: 50px;
+            background: var(--primary-color);
+            color: white;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .client-info h3 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .client-info p {
+            margin: 0.25rem 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .client-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1.5rem;
+        }
+
+        .search-wrapper {
+            position: sticky;
+            top: 1rem;
+            z-index: 100;
+            margin-bottom: 2rem;
+        }
+
+        .search-bar {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            background: white;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            font-size: 1rem;
+            font-family: 'Inter', sans-serif;
+            transition: border-color 0.2s;
+        }
+
+        .search-bar:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard-container">
+        <header class="glass">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <button class="btn" style="background: none; padding: 0.5rem;"
+                    onclick="window.location.href='index.html'">
+                    <span style="font-size: 1.5rem;">←</span>
+                </button>
+                <h1>Cartera de Clientes</h1>
+            </div>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
+                    <span>➕</span> Nuevo Cliente
+                </button>
+            </div>
+        </header>
+
+        <div class="search-wrapper">
+            <input type="text" id="clientSearchInput" class="search-bar"
+                placeholder="Buscar por Nombre, Cédula o Ciudad..." oninput="handleClientSearch(this.value)">
+        </div>
+
+        <div id="clientsGrid" class="clients-grid">
+            <!-- Populated by JS -->
+            <div class="empty-state">
+                <p>Cargando cartera de clientes...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+    <script src="app.js?v=13.2"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof loadClientsList === 'function') {
+                loadClientsList();
+            }
+        });
+
+        function handleClientSearch(val) {
+            if (typeof filterClients === 'function') {
+                filterClients(val);
+            }
+        }
+    </script>
+</body>
+
+</html>

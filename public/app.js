@@ -135,42 +135,52 @@ document.addEventListener('DOMContentLoaded', async () => {
                         folder_virtual: ''
                     };
 
-                    const docRef = await db.collection('clientes').add(newClient);
+                    let docIdToUse;
+                    if (clientId) {
+                        // UPDATE Existing
+                        await db.collection('clientes').doc(clientId).update(newClient);
+                        docIdToUse = clientId;
+                        alert("✅ Expediente actualizado correctamente");
+                    } else {
+                        // CREATE New
+                        const docRef = await db.collection('clientes').add(newClient);
+                        docIdToUse = docRef.id;
 
-                    // --- Initial Loan Logic ---
-                    if (document.getElementById('enableInitialLoan').checked) {
-                        const amount = parseFloat(document.getElementById('initLoanAmount').value);
-                        const rate = parseFloat(document.getElementById('initLoanRate').value);
+                        // --- Initial Loan Logic (Only for NEW clients) ---
+                        if (document.getElementById('enableInitialLoan').checked) {
+                            const amount = parseFloat(document.getElementById('initLoanAmount').value);
+                            const rate = parseFloat(document.getElementById('initLoanRate').value);
 
-                        if (amount > 0) {
-                            const frequency = document.getElementById('initLoanFrequency').value;
-                            const loanData = {
-                                cliente_id: docRef.id,
-                                nombre_cliente: newClient.nombre,
-                                monto_principal: amount,
-                                tasa_mensual: (document.getElementById('initLoanRatePeriod').value === 'anual') ? (rate / 1200) : (rate / 100),
-                                metodo: document.getElementById('initLoanAmortization').value,
-                                frecuencia_pago: frequency,
-                                plazo_meses: 0, // Default for now
-                                garantia: {
-                                    tipo: 'Declarado en Registro',
-                                    descripcion: document.getElementById('initLoanGuarantee').value || 'Sin descripción',
-                                    fotos: []
-                                },
-                                fiador_nombre: newClient.solidario.nombre || 'N/A',
-                                fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
-                                estado: 'ACTIVO',
-                                capital_actual: amount,
-                                mora_acumulada: 0,
-                                interes_pendiente: 0,
-                                proximo_pago: calculateNextPaymentDate(frequency)
-                            };
-                            await db.collection('prestamos').add(loanData);
+                            if (amount > 0) {
+                                const frequency = document.getElementById('initLoanFrequency').value;
+                                const loanData = {
+                                    cliente_id: docRef.id,
+                                    nombre_cliente: newClient.nombre,
+                                    monto_principal: amount,
+                                    tasa_mensual: (document.getElementById('initLoanRatePeriod').value === 'anual') ? (rate / 1200) : (rate / 100),
+                                    metodo: document.getElementById('initLoanAmortization').value,
+                                    frecuencia_pago: frequency,
+                                    plazo_meses: 0, // Default for now
+                                    garantia: {
+                                        tipo: 'Declarado en Registro',
+                                        descripcion: document.getElementById('initLoanGuarantee').value || 'Sin descripción',
+                                        fotos: []
+                                    },
+                                    fiador_nombre: newClient.solidario.nombre || 'N/A',
+                                    fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
+                                    estado: 'ACTIVO',
+                                    capital_actual: amount,
+                                    mora_acumulada: 0,
+                                    interes_pendiente: 0,
+                                    proximo_pago: calculateNextPaymentDate(frequency)
+                                };
+                                await db.collection('prestamos').add(loanData);
+                            }
                         }
-                    }
 
-                    alert("✅ Expediente y Préstamo (si aplica) registrados correctamente");
-                    window.location.href = `client.html?id=${docRef.id}`;
+                        alert("✅ Expediente y Préstamo (si aplica) registrados correctamente");
+                        window.location.href = `client.html?id=${docIdToUse}`;
+                    }
                 } catch (err) {
                     console.error(err);
                     alert("Error: " + err.message);
@@ -485,10 +495,78 @@ async function loadClientProfile(id) {
                 <div>
                     <p style="margin-bottom:0.5rem;"><strong>Referencias Personales:</strong></p>
                     <small>1. ${r[0]?.nombre || 'N/A'} (${r[0]?.telefono || ''})</small><br>
-                    <small>2. ${r[1]?.nombre || 'N/A'} (${r[1]?.telefono || ''})</small>
                 </div>
             `;
         }
+
+        // Show Edit Button
+        const editBtn = document.getElementById('editProfileBtn');
+        if (editBtn) editBtn.style.display = 'block';
+
+        // Global function to enable edit mode
+        window.enableEditMode = function () {
+            // Hide profile view segments
+            const viewHeader = document.getElementById('profileHeader');
+            const viewLoans = document.getElementById('loansContainer');
+            const viewTabs = document.getElementById('clientTabsContainer');
+
+            if (viewHeader) viewHeader.style.display = 'none';
+            if (viewLoans) viewLoans.style.display = 'none';
+            if (viewTabs) viewTabs.style.display = 'none';
+
+            // Show Form
+            const formSection = document.getElementById('newClientFormSection');
+            if (formSection) {
+                formSection.style.display = 'block';
+                const headerSpan = formSection.querySelector('h2 span');
+                if (headerSpan) headerSpan.innerText = '✏️';
+                formSection.querySelector('h2').innerHTML = '<span>✏️</span> Editar Expediente del Cliente';
+                formSection.querySelector('button[type="submit"]').innerText = '💾 Actualizar Expediente';
+            }
+
+            // Populate Form
+            document.getElementById('regName').value = client.nombre || '';
+            document.getElementById('regId').value = client.cedula || '';
+            document.getElementById('regNationality').value = client.nacionalidad || '';
+            document.getElementById('regDob').value = client.fecha_nacimiento || '';
+            document.getElementById('regBirthPlace').value = client.lugar_nacimiento || '';
+            document.getElementById('regGender').value = client.sexo || '';
+            document.getElementById('regCivil').value = client.estado_civil || '';
+            document.getElementById('regPhone').value = client.telefono || '';
+            document.getElementById('regEmail').value = client.email || '';
+            document.getElementById('regAddress').value = client.direccion || '';
+
+            if (client.trabajo) {
+                document.getElementById('regJob').value = client.trabajo.ocupacion || '';
+                document.getElementById('regCompany').value = client.trabajo.empresa || '';
+                document.getElementById('regSalary').value = client.trabajo.sueldo || '';
+                document.getElementById('regWorkPhone').value = client.trabajo.telefono || '';
+            }
+
+            if (client.solidario) {
+                document.getElementById('regSolidarioName').value = client.solidario.nombre || '';
+                document.getElementById('regSolidarioId').value = client.solidario.cedula || '';
+                document.getElementById('regSolidarioPhone').value = client.solidario.telefono || '';
+                document.getElementById('regSolidarioJob').value = client.solidario.referencia_laboral || '';
+            }
+
+            if (client.referencias) {
+                document.getElementById('ref1Name').value = client.referencias[0]?.nombre || '';
+                document.getElementById('ref1Phone').value = client.referencias[0]?.telefono || '';
+                document.getElementById('ref2Name').value = client.referencias[1]?.nombre || '';
+                document.getElementById('ref2Phone').value = client.referencias[1]?.telefono || '';
+            }
+
+            if (client.garantia) {
+                document.getElementById('regGuaranteeType').value = client.garantia.tipo || '';
+                document.getElementById('regGuaranteeValue').value = client.garantia.valor_estimado || '';
+                document.getElementById('regGuaranteeDesc').value = client.garantia.descripcion || '';
+            }
+
+            // Hide initial loan section for existing clients
+            const initLoanSec = document.getElementById('initialLoanSection');
+            if (initLoanSec) initLoanSec.style.display = 'none';
+        };
 
 
         // 2. Get Loans
@@ -1119,6 +1197,87 @@ async function deleteDocument(clientId, docId, path) {
         alert("❌ Error al eliminar: " + error.message);
     }
 }
+
+// --- 4. Cartera de Clientes Logic ---
+let allClients = [];
+
+window.loadClientsList = function () {
+    const grid = document.getElementById('clientsGrid');
+    if (!grid) return;
+
+    db.collection('clientes').orderBy('nombre').onSnapshot(snapshot => {
+        allClients = [];
+        snapshot.forEach(doc => {
+            allClients.push({ id: doc.id, ...doc.data() });
+        });
+        renderClientsGrid(allClients);
+    }, err => {
+        console.error("Error loading clients:", err);
+        grid.innerHTML = `<div class="empty-state"><p>Error cargando clientes: ${err.message}</p></div>`;
+    });
+};
+
+window.renderClientsGrid = function (clients) {
+    const grid = document.getElementById('clientsGrid');
+    if (!grid) return;
+
+    if (clients.length === 0) {
+        grid.innerHTML = `<div class="empty-state"><p>No se encontraron clientes.</p></div>`;
+        return;
+    }
+
+    grid.innerHTML = clients.map(client => {
+        const initials = client.nombre ? client.nombre.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : '??';
+        return `
+            <div class="client-card">
+                <div class="initials">${initials}</div>
+                <div class="client-info">
+                    <h3>${client.nombre}</h3>
+                    <p>🆔 ${client.cedula}</p>
+                    <p>📞 ${client.telefono || 'Sin teléfono'}</p>
+                    <p>📍 ${client.direccion || 'Sin dirección'}</p>
+                </div>
+                <div class="client-actions">
+                    <button class="btn btn-secondary" style="flex:1; font-size:0.8rem;" onclick="window.location.href='client.html?id=${client.id}'">
+                        👁️ Ver
+                    </button>
+                    <button class="btn" style="flex:1; font-size:0.8rem; background:#fef2f2; color:#ef4444; border:1px solid #fee2e2;" onclick="deleteClient('${client.id}', '${client.nombre}')">
+                        🗑️ Borrar
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+};
+
+window.filterClients = function (query) {
+    const q = query.toLowerCase().trim();
+    if (!q) {
+        renderClientsGrid(allClients);
+        return;
+    }
+
+    const filtered = allClients.filter(c =>
+        (c.nombre && c.nombre.toLowerCase().includes(q)) ||
+        (c.cedula && c.cedula.includes(q)) ||
+        (c.direccion && c.direccion.toLowerCase().includes(q))
+    );
+    renderClientsGrid(filtered);
+};
+
+window.deleteClient = async function (id, nombre) {
+    if (!confirm(`¿Estás seguro de que deseas eliminar a ${nombre}? Esta acción no se puede deshacer y borrará permanentemente su expediente.`)) {
+        return;
+    }
+
+    try {
+        await db.collection('clientes').doc(id).delete();
+        alert("Cliente eliminado correctamente.");
+    } catch (err) {
+        console.error("Error deleting client:", err);
+        alert("Error al eliminar cliente: " + err.message);
+    }
+};
 
 // --- Seed Data Helper (For Demo Purposes) ---
 window.seedDatabase = async function () {

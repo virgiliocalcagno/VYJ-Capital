@@ -111,10 +111,13 @@
 
 <body>
     <div class="dashboard-container">
-        <header>
+        <header style="display: flex; justify-content: space-between; align-items: center;">
             <a href="index.html" class="btn"
                 style="background: transparent; color: var(--text-secondary); padding-left: 0;">← Volver al
                 Dashboard</a>
+            <button id="editProfileBtn" class="btn btn-secondary" style="display: none;" onclick="enableEditMode()">
+                <span>✏️</span> Editar Datos del Cliente
+            </button>
         </header>
 
         <!-- New Client Form (Hidden by default) -->
