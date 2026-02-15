@@ -779,55 +779,94 @@ async function processOCR(file, type) {
     }
 }
 
-// --- Digital Audit (KYC) Logic ---
+// --- Digital Audit (KYC) Logic --- REESTRUCTURADO v13.0 ---
 window.runKYCAuditV9 = async function () {
-    console.log("Iniciando Auditoría KYC v9...");
+    console.log("Iniciando Auditoría KYC v13 (reestructurada)...");
 
-    const params = new URLSearchParams(window.location.search);
-    const isNew = params.get('mode') === 'new';
+    // 1. Captura de datos ultra-robusta
+    let name = '';
+    let cedula = '';
 
-    // Captura de datos ultra-robusta
-    let name = document.getElementById('regName').value.trim();
-    let cedula = document.getElementById('regId').value.trim();
+    const regName = document.getElementById('regName');
+    const regId = document.getElementById('regId');
+    if (regName) name = regName.value.trim();
+    if (regId) cedula = regId.value.trim();
 
-    // Si los campos de registro están vacíos, intentar sacarlos del encabezado del perfil
+    // Fallback: obtener del encabezado del perfil
     if (!name) {
-        name = document.getElementById('clientName').innerText;
-        if (name === "Cargando cliente...") name = "";
+        const clientNameEl = document.getElementById('clientName');
+        if (clientNameEl) {
+            name = clientNameEl.innerText;
+            if (name === "Cargando cliente...") name = "";
+        }
     }
     if (!cedula) {
-        const idDisplay = document.getElementById('clientIdDisplay').innerText;
-        cedula = idDisplay.includes('ID:') ? idDisplay.replace('ID: ', '').trim() : '';
+        const idDisplay = document.getElementById('clientIdDisplay');
+        if (idDisplay) {
+            const idText = idDisplay.innerText;
+            cedula = idText.includes('ID:') ? idText.replace('ID: ', '').trim() : '';
+        }
     }
 
-    const kycBtn = document.getElementById('kycMainBtn');
-    const container = document.getElementById('kycResultsContainer');
-
+    // 2. Validar
     if (!name || name === "") {
         alert("Por favor, ingresa el Nombre Completo del cliente para realizar la auditoría.");
         return;
     }
 
+    // 3. UI: Preparar estado de carga
+    const kycBtn = document.getElementById('kycMainBtn');
+    const container = document.getElementById('kycResultsContainer');
+    const summaryEl = document.getElementById('kycSummary');
+    const linksEl = document.getElementById('kycLinks');
+    const badgesEl = document.getElementById('kycBadges');
+
+    if (!kycBtn || !container || !summaryEl || !linksEl || !badgesEl) {
+        console.error("KYC: Elementos HTML no encontrados.");
+        alert("Error interno: los elementos de la interfaz KYC no se encontraron.");
+        return;
+    }
+
     kycBtn.disabled = true;
-    kycBtn.innerHTML = "<span>⌛</span> Analizando redes/legal...";
+    kycBtn.innerHTML = "<span>⌛</span> Consultando IA...";
     container.style.display = 'block';
+    summaryEl.innerText = "🔍 Investigando con Inteligencia Artificial... (puede tomar hasta 30 segundos)";
+    linksEl.innerHTML = "";
+    badgesEl.innerHTML = "";
 
-    // Limpiar resultados previos si existen
-    document.getElementById('kycSummary').innerText = "Investigando...";
-    document.getElementById('kycLinks').innerHTML = "";
-    document.getElementById('kycBadges').innerHTML = "";
-
+    // 4. Llamar a la Cloud Function con timeout del cliente
     try {
-        const auditoriaKYC = firebase.functions().httpsCallable('auditoriaKYC_v11');
-        const result = await auditoriaKYC({ nombre: name, cedula: cedula });
+        const auditoriaKYC = firebase.functions().httpsCallable('auditoriaKYC');
+
+        // Timeout de 60 segundos del lado del cliente
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("La auditoría tardó demasiado. Intenta de nuevo.")), 60000)
+        );
+
+        const result = await Promise.race([
+            auditoriaKYC({ nombre: name, cedula: cedula }),
+            timeoutPromise
+        ]);
+
         const data = result.data;
+        console.log("KYC resultado:", data);
 
-        // Renderizar Resumen
-        document.getElementById('kycSummary').innerText = data.resumen_riesgo || "Análisis completado.";
+        // 5. Renderizar Resumen con nivel de riesgo
+        const riskColors = { 'BAJO': '#22c55e', 'MEDIO': '#f59e0b', 'ALTO': '#ef4444', 'INDETERMINADO': '#6b7280' };
+        const riskColor = riskColors[data.nivel_riesgo] || riskColors['INDETERMINADO'];
 
-        // Renderizar Enlaces (LinkedIn, FB, etc.)
-        const linksContainer = document.getElementById('kycLinks');
-        linksContainer.innerHTML = (data.perfiles_encontrados || []).map(p => `
+        summaryEl.innerHTML = `
+            <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
+                <span style="background:${riskColor}; color:white; padding:0.15rem 0.5rem; border-radius:12px; font-size:0.7rem; font-weight:700;">
+                    RIESGO ${data.nivel_riesgo || 'N/A'}
+                </span>
+                <small style="color:var(--text-secondary);">Fuente: ${data._source === 'grounded' ? '🌐 Google Search' : '🤖 IA'}</small>
+            </div>
+            <p style="margin:0; font-size:0.85rem;">${data.resumen_riesgo || 'Análisis completado sin detalles.'}</p>
+        `;
+
+        // 6. Renderizar Enlaces (LinkedIn, FB, etc.)
+        linksEl.innerHTML = (data.perfiles_encontrados || []).map(p => `
             <div style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem; border-radius:6px; border:1px solid #eee;">
                 <a href="${p.url}" target="_blank" style="font-size:0.8rem; color:var(--text-primary); text-decoration:none;">
                     ${p.plataforma} ${p.coincidencia_alta ? '⭐' : ''}
@@ -839,9 +878,8 @@ window.runKYCAuditV9 = async function () {
             </div>
         `).join('');
 
-        // Renderizar Hallazgos Clave
-        const badgesContainer = document.getElementById('kycBadges');
-        badgesContainer.innerHTML = (data.hallazgos_clave || []).map(h => `
+        // 7. Renderizar Hallazgos Clave
+        badgesEl.innerHTML = (data.hallazgos_clave || []).map(h => `
             <span style="background:rgba(59, 130, 246, 0.1); color:var(--primary-color); padding:0.25rem 0.6rem; border-radius:20px; font-size:0.7rem; font-weight:500;">
                 ${h}
             </span>
@@ -849,7 +887,9 @@ window.runKYCAuditV9 = async function () {
 
     } catch (error) {
         console.error("KYC Error:", error);
-        alert("La IA de auditoría no pudo completar la búsqueda: " + error.message);
+        summaryEl.innerHTML = `<p style="color:var(--danger-color); margin:0;">❌ ${error.message || 'Error desconocido en la auditoría.'}</p>`;
+        linksEl.innerHTML = "";
+        badgesEl.innerHTML = "";
     } finally {
         kycBtn.disabled = false;
         kycBtn.innerHTML = "<span>🚀</span> Re-iniciar Auditoría";

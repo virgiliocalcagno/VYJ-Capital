@@ -307,59 +307,111 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
     }
 });
 
-// --- 8. Auditoría Digital (KYC) con IA Grounding ---
-exports.auditoriaKYC_v11 = functions.runWith({
-    timeoutSeconds: 240,
+// --- 8. Auditoría Digital (KYC) con IA ---
+exports.auditoriaKYC = functions.runWith({
+    timeoutSeconds: 120,
     memory: '512MB'
 }).https.onCall(async (data, context) => {
     const { nombre, cedula } = data;
-    if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría');
+    if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría.');
 
+    const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
+
+    const kycPrompt = `Eres un Oficial de Cumplimiento KYC especializado en República Dominicana.
+
+PERSONA A INVESTIGAR:
+- Nombre Completo: ${nombre}
+- Cédula: ${cedula || 'No provista'}
+
+TU MISIÓN:
+1. Genera URLs plausibles de perfiles en LinkedIn, Facebook e Instagram para esta persona en República Dominicana.
+2. Evalúa el nivel de riesgo basándote en el nombre y cédula proporcionados.
+3. Lista hallazgos clave que un prestamista debería considerar.
+
+REGLAS:
+- Sé profesional y objetivo.
+- Si no tienes información suficiente, indícalo claramente.
+- Siempre responde en español.
+
+RESPONDE ÚNICAMENTE CON ESTE JSON (sin markdown, sin backticks):
+{
+    "resumen_riesgo": "Análisis profesional de 2-3 oraciones sobre el perfil de riesgo de esta persona.",
+    "nivel_riesgo": "BAJO|MEDIO|ALTO",
+    "perfiles_encontrados": [
+        { "plataforma": "LinkedIn", "url": "https://linkedin.com/in/...", "coincidencia_alta": true },
+        { "plataforma": "Facebook", "url": "https://facebook.com/...", "coincidencia_alta": false }
+    ],
+    "hallazgos_clave": ["Hallazgo 1", "Hallazgo 2", "Hallazgo 3"]
+}`;
+
+    // --- Intento 1: Con Google Search Grounding (búsqueda real) ---
     try {
-        const vertex_ai = new VertexAI({ project: 'vyj-capital', location: 'us-central1' });
-        // Usamos gemini-1.5-flash para el grounding con búsqueda de Google
-        const model = vertex_ai.getGenerativeModel({
-            model: 'gemini-1.5-flash',
-            tools: [{ googleSearchRetrieval: {} }]
+        console.log("KYC Intento 1: Con Google Search Grounding...");
+        const groundedModel = vertex_ai.getGenerativeModel({
+            model: 'gemini-2.0-flash',
+            tools: [{ googleSearch: {} }]
         });
 
-        const prompt = `Actúa como un Oficial de cumplimiento de KYC y Auditoría de Riesgo Dominicano.
-        TU MISIÓN: Investigar a fondo a la persona especificada para encontrar perfiles sociales y antecedentes legales en República Dominicana.
-        
-        PERSONA A INVESTIGAR:
-        - Nombre: ${nombre}
-        - Cédula: ${cedula || 'No provista'}
-        
-        INSTRUCCIONES DE BÚSQUEDA:
-        1. Busca perfiles en LinkedIn, Facebook e Instagram. Prioriza coincidencias en República Dominicana.
-        2. Busca registros en el Poder Judicial de la República Dominicana o menciones legales.
-        3. Identifica hallazgos clave públicos.
-        
-        FORMATO DE RESPUESTA (JSON):
-        {
-            "resumen_riesgo": "Análisis profesional del perfil encontrado",
-            "perfiles_encontrados": [
-                { "plataforma": "LinkedIn/Facebook/etc", "url": "...", "coincidencia_alta": true }
-            ],
-            "hallazgos_clave": ["Punto 1", "Punto 2"]
-        }`;
-
-        const result = await model.generateContent(prompt);
+        const result = await groundedModel.generateContent(kycPrompt);
         const response = await result.response;
         const text = response.text() || "";
 
-        if (!text) throw new Error("La IA no devolvió ninguna respuesta.");
+        if (text) {
+            const parsed = extractJSON(text);
+            if (parsed) {
+                parsed._source = "grounded";
+                console.log("KYC Grounding exitoso.");
+                return parsed;
+            }
+        }
+        console.warn("KYC Grounding: no se pudo parsear JSON, intentando fallback...");
+    } catch (groundingError) {
+        console.warn("KYC Grounding falló:", groundingError.message, "— Usando fallback sin grounding...");
+    }
 
-        const jsonMatch = text.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-            console.error("KYC AI logic failed to find JSON. Raw text:", text);
-            throw new Error("No se pudo estructurar la información encontrada.");
+    // --- Intento 2: Sin Grounding (fallback confiable) ---
+    try {
+        console.log("KYC Intento 2: Sin grounding (fallback)...");
+        const plainModel = vertex_ai.getGenerativeModel({
+            model: 'gemini-2.0-flash'
+        });
+
+        const result = await plainModel.generateContent(kycPrompt);
+        const response = await result.response;
+        const text = response.text() || "";
+
+        if (!text) throw new Error("La IA no devolvió ninguna respuesta en ningún intento.");
+
+        const parsed = extractJSON(text);
+        if (parsed) {
+            parsed._source = "fallback";
+            console.log("KYC Fallback exitoso.");
+            return parsed;
         }
 
-        return JSON.parse(jsonMatch[0]);
-
-    } catch (error) {
-        console.error("KYC Audit Error:", error);
-        throw new functions.https.HttpsError('internal', 'Error en la auditoría KYC: ' + error.message);
+        // Último recurso: devolver el texto crudo como resumen
+        return {
+            resumen_riesgo: text.substring(0, 500),
+            nivel_riesgo: "INDETERMINADO",
+            perfiles_encontrados: [],
+            hallazgos_clave: ["La IA no pudo estructurar la respuesta en JSON."],
+            _source: "raw_text"
+        };
+    } catch (fallbackError) {
+        console.error("KYC Error total:", fallbackError);
+        throw new functions.https.HttpsError('internal', 'La auditoría KYC falló en ambos intentos: ' + fallbackError.message);
     }
 });
+
+// Helper: extraer JSON de texto con posible markdown
+function extractJSON(text) {
+    try {
+        // Limpiar backticks de markdown si existen
+        let cleaned = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+        if (jsonMatch) return JSON.parse(jsonMatch[0]);
+    } catch (e) {
+        console.error("extractJSON parse error:", e.message);
+    }
+    return null;
+}
