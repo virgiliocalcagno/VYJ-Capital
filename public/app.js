@@ -155,7 +155,7 @@ function parseOCRResult(text, side) {
 }
 
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log("VYJ Capital Interface Loaded - v11.8 (OCR Stable Worker)");
+    console.log("VYJ Capital Interface Loaded - v11.9 (OCR Stable Revert)");
 
     // --- 0. Router Logic (Very Basic) ---
     const params = new URLSearchParams(window.location.search);
