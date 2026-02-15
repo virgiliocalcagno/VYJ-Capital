@@ -248,16 +248,16 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
 
         let prompt = "";
         if (docType === 'id') {
-            prompt = `Actúa como Procesador de Identidad Dominicano experto (Cédula de Identidad y Electoral). 
-            TU MISIÓN: Extraer datos con PRECISIÓN ABSOLUTA para evitar errores legales.
+            prompt = `Actúa como Experto en Procesamiento de Documentos de Identidad (Internacional).
+            TU MISIÓN: Extraer datos de la imagen (Cédula, Licencia de Conducir, Pasaporte, ID Card) con PRECISIÓN.
             
-            REGLAS:
-            - Nombre: El nombre completo tal cual aparece.
-            - Cédula: El número con sus guiones (ej: 001-0000000-1).
-            - Fecha Nacimiento: Formato YYYY-MM-DD.
-            - Lugar de Nacimiento: Ciudad o provincia de nacimiento (Lugar de Nac.)
-            - Sexo: Solo 'M' o 'F'.
-            - Dirección: Si la imagen es del REVERSO de la cédula, extrae la DIRECCIÓN completa.
+            REGLAS DE EXTRACCIÓN:
+            - Nombre: El nombre completo del titular.
+            - Cédula: El número principal del documento (ID, DLN, Passport No., Cédula). Conserva guiones o formatos originales.
+            - Fecha Nacimiento: Formato YYYY-MM-DD (busca DOB, Date of Birth, Nacimiento).
+            - Lugar de Nacimiento: Ciudad, Estado o País.
+            - Sexo: 'M' o 'F'.
+            - Dirección: La dirección completa si aparece (común en licencias y reversos).
             
             RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
             { "nombre": "...", "cedula": "...", "fecha_nacimiento": "...", "lugar_nacimiento": "...", "sexo": "...", "direccion": "..." }`;
