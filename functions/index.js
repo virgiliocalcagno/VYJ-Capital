@@ -309,8 +309,8 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
 
 // --- 8. Auditoría Digital (KYC) con IA Grounding ---
 exports.auditoriaKYC_v11 = functions.runWith({
-    timeoutSeconds: 120,
-    memory: '256MB'
+    timeoutSeconds: 240,
+    memory: '512MB'
 }).https.onCall(async (data, context) => {
     const { nombre, cedula } = data;
     if (!nombre) throw new functions.https.HttpsError('invalid-argument', 'Falta el nombre para la auditoría');
@@ -345,7 +345,8 @@ exports.auditoriaKYC_v11 = functions.runWith({
         }`;
 
         const result = await model.generateContent(prompt);
-        const text = result.response.candidates[0].content.parts[0].text;
+        const response = await result.response;
+        const text = response.text();
 
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (!jsonMatch) {

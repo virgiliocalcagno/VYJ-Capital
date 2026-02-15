@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         nombre: document.getElementById('regName').value,
                         cedula: document.getElementById('regId').value,
                         fecha_nacimiento: document.getElementById('regDob').value || '',
-                        lugar_nacimiento: document.getElementById('regPob').value || '',
+                        lugar_nacimiento: document.getElementById('regBirthPlace').value || '',
                         sexo: document.getElementById('regGender').value,
                         estado_civil: document.getElementById('regCivil').value,
                         telefono: document.getElementById('regPhone').value,
