@@ -604,11 +604,9 @@ async function loadClientProfile(id) {
                 rn.innerText = `📋 ${ad.total || ad.perfiles.length} perfiles (auditoría previa)`;
                 rs.innerText = `@${ad.username} · ${ad.fecha ? new Date(ad.fecha).toLocaleDateString() : ''}`;
                 rl.innerHTML = ad.perfiles.map(p => `
-                    <a href="${p.url}" target="_blank" rel="noopener noreferrer"
-                        style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:#1f2937; transition: transform 0.1s;"
-                        onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
-                        <span style="font-size:0.8rem; font-weight:500;">${p.plataforma || p.nombre || 'Desconocido'}</span>
-                        <span style="font-size:0.65rem; color:var(--primary);">Abrir ↗</span>
+                    <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary w-full" style="justify-content: flex-start; padding: 0.5rem 1rem;">
+                        <span>${p.plataforma || p.nombre || 'Desconocido'}</span>
+                        <span class="text-accent" style="margin-left:auto; font-size:0.75rem;">Abrir ↗</span>
                     </a>
                 `).join('');
             }
@@ -648,18 +646,18 @@ function renderLoanCard(loanId, loan, container) {
             <span class="status-badge ${statusClass}">${statusText}</span>
         </div>
 
-        <div class="grid-2 gap-2 mb-1" style="background: var(--bg-main); padding: 1.25rem; border-radius: 8px;">
+        <div class="grid-2 gap-2 mb-1 card-inner-wrapper">
             <div>
                 <small class="text-muted">Capital Pendiente</small>
-                <div style="font-weight: 800; font-size: 1.15rem; color: var(--text-primary);">${formatCurrency(loan.capital_actual)}</div>
+                <div class="card-value-sm">${formatCurrency(loan.capital_actual)}</div>
             </div>
             <div>
                 <small class="text-muted">Interés Pendiente</small>
-                <div style="font-weight: 700; color: var(--text-primary);">${formatCurrency(loan.interes_pendiente || 0)}</div>
+                <div class="card-value-sm">${formatCurrency(loan.interes_pendiente || 0)}</div>
             </div>
-            <div class="span-2" style="border-top: 1px solid var(--border); padding-top: 0.5rem;">
-                <small style="color: var(--danger); font-weight: 700;">Mora Acumulada</small>
-                <div style="font-weight: 800; color: var(--danger); font-size: 1.1rem;">${formatCurrency(loan.mora_acumulada || 0)}</div>
+            <div class="span-2 border-top-danger">
+                <small class="text-danger">Mora Acumulada</small>
+                <div class="card-value-md text-danger">${formatCurrency(loan.mora_acumulada || 0)}</div>
             </div>
         </div>
 
@@ -1095,12 +1093,9 @@ window.realizarAuditoriaDigital = async function () {
             resultsList.innerHTML = `<p style="text-align:center; color:var(--text-muted); font-size:0.875rem; padding:2rem; background:var(--bg-main); border-radius:12px;">No se encontraron perfiles públicos para @${username}.</p>`;
         } else {
             resultsList.innerHTML = perfiles.map(p => `
-                <a href="${p.url}" target="_blank" rel="noopener noreferrer"
-                    style="display:flex; justify-content:space-between; align-items:center; border:1px solid var(--border); padding:0.875rem 1rem; border-radius:10px; text-decoration:none; color:var(--text-primary); margin-bottom:0.5rem; transition: background 0.2s, transform 0.2s; background: white;"
-                    onmouseover="this.style.background='#f1f5f9'; this.style.transform='translateX(4px)';" 
-                    onmouseout="this.style.background='white'; this.style.transform='none';">
-                    <span style="font-size:0.9rem; font-weight:700;">${p.plataforma}</span>
-                    <span style="font-size:0.75rem; color:var(--primary); font-weight:800; letter-spacing: 0.05em;">VER PERFIL ↗</span>
+                <a href="${p.url}" target="_blank" rel="noopener noreferrer" class="btn btn-secondary w-full" style="justify-content: flex-start;">
+                    <span>${p.plataforma}</span>
+                    <span class="text-accent" style="margin-left:auto; font-size:0.8rem;">VER PERFIL ↗</span>
                 </a>
             `).join('');
         }
@@ -1254,11 +1249,11 @@ window.renderClientsGrid = function (clients) {
                     <p>📞 ${client.telefono || 'Sin teléfono'}</p>
                     <p>📍 ${client.direccion || 'Sin dirección'}</p>
                 </div>
-                <div class="client-actions">
-                    <button class="btn btn-secondary" style="flex:1; font-size:0.85rem;" onclick="window.location.href='client.html?id=${client.id}'">
+                <div class="client-actions-grid">
+                    <button class="btn btn-secondary" onclick="window.location.href='client.html?id=${client.id}'">
                         👁️ Ver
                     </button>
-                    <button class="btn" style="flex:1; font-size:0.85rem; background:rgba(239, 68, 68, 0.1); color:var(--danger); border:1px solid rgba(239, 68, 68, 0.2);" onclick="deleteClient('${client.id}', '${client.nombre}')">
+                    <button class="btn btn-danger-soft" onclick="deleteClient('${client.id}', '${client.nombre}')">
                         🗑️ Borrar
                     </button>
                 </div>

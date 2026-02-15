@@ -15,9 +15,8 @@
     <div class="dashboard-container">
         <header class="flex-between">
             <div>
-                <h1 style="color: var(--primary);">VYJ CAPITAL</h1>
-                <div style="font-size: 0.75rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-secondary);">
-                    SISTEMA DE GESTIÓN FINANCIERA</div>
+                <h1 class="text-primary-alt">VYJ CAPITAL</h1>
+                <div class="header-subtitle">SISTEMA DE GESTIÓN FINANCIERA</div>
             </div>
             <div class="header-actions">
                 <span class="status-badge status-active">Online</span>
@@ -34,25 +33,21 @@
         </div>
 
         <section class="metrics-grid mb-2">
-            <div class="card" style="border-top: 4px solid var(--primary);">
-                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Capital
-                    en Calle</div>
-                <div class="card-value" id="totalCapital" style="color: var(--primary);">$0.00</div>
+            <div class="card border-primary">
+                <div class="metric-label">Capital en Calle</div>
+                <div class="card-value text-primary-alt" id="totalCapital">$0.00</div>
             </div>
-            <div class="card" style="border-top: 4px solid #f59e0b;">
-                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">
-                    Intereses por Cobrar</div>
-                <div class="card-value" id="totalInterest" style="color: #b45309;">$0.00</div>
+            <div class="card border-warning">
+                <div class="metric-label">Intereses por Cobrar</div>
+                <div class="card-value text-warning" id="totalInterest">$0.00</div>
             </div>
-            <div class="card" style="border-top: 4px solid var(--danger);">
-                <div class="text-muted" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase;">Mora
-                    Acumulada</div>
-                <div class="card-value" id="totalMora" style="color: var(--danger);">$0.00</div>
+            <div class="card border-danger">
+                <div class="metric-label">Mora Acumulada</div>
+                <div class="card-value text-danger" id="totalMora">$0.00</div>
             </div>
         </section>
 
-        <h2 style="font-size: 1.25rem; font-weight: 900; margin: 3rem 0 1rem; text-transform: uppercase;">⚠️ Mora
-            Crítica</h2>
+        <h2 class="section-title">⚠️ Mora Crítica</h2>
         <div class="table-container">
             <table id="moraTable">
                 <thead>
@@ -72,17 +67,12 @@
             </table>
         </div>
 
-        <section class="mt-2" style="border-top: 1px solid var(--border); padding-top: 2rem;">
-            <h2
-                style="font-size: 1.1rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--text-primary); text-transform: uppercase;">
-                🔎 Búsqueda de Clientes</h2>
-            <div class="flex-between" style="gap: 1rem;">
-                <input type="text" id="searchInput" placeholder="Nombre o Cédula..."
-                    style="flex-grow:1; border-radius: 12px; height: 50px;">
-                <button class="btn btn-primary" onclick="searchClient()"
-                    style="height: 50px; padding: 0 2rem;">BUSCAR</button>
-                <button id="seedBtn" class="btn btn-secondary" onclick="seedDatabase()"
-                    style="height: 50px;">Prueba</button>
+        <section class="mt-2 search-section">
+            <h2 class="search-title">🔎 Búsqueda de Clientes</h2>
+            <div class="flex-between gap-1">
+                <input type="text" id="searchInput" placeholder="Nombre o Cédula..." class="input-h-lg">
+                <button class="btn btn-primary h-lg" onclick="searchClient()">BUSCAR</button>
+                <button id="seedBtn" class="btn btn-secondary h-lg" onclick="seedDatabase()">Prueba</button>
             </div>
         </section>
     </div>
@@ -92,7 +82,7 @@
     <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
-    <script src="app.js?v=11.3"></script>
+    <script src="app.js?v=13.3"></script>
 </body>
 
 </html>

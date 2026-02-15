@@ -14,22 +14,17 @@
 <body>
     <div class="dashboard-container">
         <header class="flex-between">
-            <div class="flex-between" style="gap: 1rem;">
-                <button class="btn btn-secondary" style="border: none; background: transparent; padding: 0.5rem;"
-                    onclick="window.location.href='index.html'">
-                    <span style="font-size: 1.5rem;">←</span>
-                </button>
+            <div class="flex-between gap-1">
+                <a href="index.html" class="btn btn-secondary btn-icon-only">←</a>
                 <h1>Cartera de Clientes</h1>
             </div>
-            <div class="header-actions">
-                <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
-                    <span>➕</span> Nuevo Cliente
-                </button>
-            </div>
+            <button class="btn btn-primary" onclick="window.location.href='client.html?mode=new'">
+                <span>➕</span> Nuevo Cliente
+            </button>
         </header>
 
-        <div class="search-wrapper">
-            <input type="text" id="clientSearchInput" class="search-bar"
+        <div class="search-wrapper mb-2">
+            <input type="text" id="clientSearchInput" class="input-h-lg"
                 placeholder="Buscar por Nombre, Cédula o Ciudad..." oninput="handleClientSearch(this.value)">
         </div>
 
@@ -46,7 +41,7 @@
     <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
     <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
-    <script src="app.js?v=13.2"></script>
+    <script src="app.js?v=13.3"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             if (typeof loadClientsList === 'function') {

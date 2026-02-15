@@ -16,10 +16,9 @@
 <body>
     <div class="dashboard-container">
         <header class="flex-between">
-            <a href="index.html" class="btn btn-secondary" style="border: none; background: transparent;">← Volver al
-                Dashboard</a>
+            <a href="index.html" class="btn btn-secondary">← Volver al Dashboard</a>
             <button id="editProfileBtn" class="btn btn-secondary" style="display: none;" onclick="enableEditMode()">
-                <span>✏️</span> Editar Datos del Cliente
+                <span>✏️</span> Editar Datos
             </button>
         </header>
 
@@ -29,39 +28,28 @@
             <form id="createClientForm" class="grid-2">
 
                 <!-- Sección 1: Datos Personales -->
-                <div class="span-2"
-                    style="border-bottom: 2px solid var(--primary); padding-bottom: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin:0; font-weight: 900; text-transform: uppercase; color: var(--primary);">👤 Datos
-                        Personales</h4>
+                <div class="span-2 section-divider">
+                    <h4>👤 Datos Personales</h4>
                 </div>
-                <div style="grid-column: span 2;">
-                    <label
-                        style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Nombre
-                        Completo</label>
+                <div class="span-2">
+                    <label>Nombre Completo</label>
                     <input type="text" id="regName" placeholder="Ej: Maria Perez" required>
                 </div>
-                <div style="display: flex; gap: 0.5rem; align-items: flex-end;">
-                    <div style="flex-grow: 1;">
-                        <label
-                            style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Cédula
-                            / Pasaporte</label>
-                        <input type="text" id="regId" placeholder="001-..." required>
-                    </div>
+                <div>
+                    <label>Cédula / Pasaporte</label>
+                    <input type="text" id="regId" placeholder="001-..." required>
                 </div>
                 <div>
-                    <label
-                        style="font-weight: 800; font-size: 0.75rem; text-transform: uppercase; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">Nacionalidad</label>
+                    <label>Nacionalidad</label>
                     <input type="text" id="regNationality" placeholder="Ej: Dominicana">
                 </div>
-                <div
-                    style="grid-column: span 2; background: rgba(30, 58, 138, 0.05); padding: 1.5rem; border-radius: 12px; border: 1px dashed var(--primary);">
-                    <p style="margin-top:0; font-weight:800; font-size: 0.95rem; color: var(--primary);">⚡
-                        Autocompletar con OCR</p>
-                    <div style="display: flex; gap: 1rem;">
-                        <button type="button" class="btn btn-secondary" onclick="triggerIDScan('front')"
-                            style="flex: 1; font-size: 0.8rem; height: 40px;">📷 Frente Cédula</button>
-                        <button type="button" class="btn btn-secondary" onclick="triggerIDScan('back')"
-                            style="flex: 1; font-size: 0.8rem; height: 40px;">📷 Reverso Cédula</button>
+                <div class="span-2 ocr-section">
+                    <p class="ocr-title">⚡ Autocompletar con OCR</p>
+                    <div class="flex-between gap-1">
+                        <button type="button" class="btn btn-secondary w-full" onclick="triggerIDScan('front')">📷
+                            Frente Cédula</button>
+                        <button type="button" class="btn btn-secondary w-full" onclick="triggerIDScan('back')">📷
+                            Reverso Cédula</button>
                     </div>
                     <div id="ocrStatus" style="margin-top: 1rem; display: none;">
                         <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
@@ -94,26 +82,22 @@
                 </div>
                 <div>
                     <label>Fecha de Nacimiento</label>
-                    <input type="date" id="regDob" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                    <input type="date" id="regDob">
                 </div>
                 <div>
                     <label>Lugar de Nacimiento</label>
-                    <input type="text" id="regBirthPlace" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Santiago">
+                    <input type="text" id="regBirthPlace" placeholder="Ej: Santiago">
                 </div>
                 <div>
                     <label>Sexo</label>
-                    <select id="regGender" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                    <select id="regGender">
                         <option value="M">Masculino</option>
                         <option value="F">Femenino</option>
                     </select>
                 </div>
                 <div>
                     <label>Estado Civil</label>
-                    <select id="regCivil" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;">
+                    <select id="regCivil">
                         <option value="soltero">Soltero/a</option>
                         <option value="casado">Casado/a</option>
                         <option value="union_libre">Unión Libre</option>
@@ -121,45 +105,36 @@
                 </div>
                 <div>
                     <label>Teléfono Personal</label>
-                    <input type="tel" id="regPhone" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="(809)..." required>
+                    <input type="tel" id="regPhone" placeholder="(809)..." required>
                 </div>
                 <div>
                     <label>Correo Electrónico</label>
-                    <input type="email" id="regEmail" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="correo@ejemplo.com">
+                    <input type="email" id="regEmail" placeholder="correo@ejemplo.com">
                 </div>
-                <div style="grid-column: span 2;">
+                <div class="span-2">
                     <label>Dirección Residencia / GPS</label>
-                    <input type="text" id="regAddress" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;"
-                        placeholder="Dirección exacta o link de Google Maps">
+                    <input type="text" id="regAddress" placeholder="Dirección exacta o link de Google Maps">
                 </div>
 
                 <!-- Sección 2: Datos Laborales -->
-                <div class="span-2"
-                    style="border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; margin-top: 1rem;">
-                    <h4 style="margin:0; color: var(--primary);">💼 Información Laboral</h4>
+                <div class="span-2 section-divider">
+                    <h4>💼 Información Laboral</h4>
                 </div>
                 <div>
                     <label>Ocupación / Puesto</label>
-                    <input type="text" id="regJob" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Ej: Contadora">
+                    <input type="text" id="regJob" placeholder="Ej: Contadora">
                 </div>
                 <div>
                     <label>Empresa</label>
-                    <input type="text" id="regCompany" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="Nombre de la empresa">
+                    <input type="text" id="regCompany" placeholder="Nombre de la empresa">
                 </div>
                 <div>
                     <label>Sueldo Mensual</label>
-                    <input type="number" id="regSalary" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="0.00">
+                    <input type="number" id="regSalary" placeholder="0.00">
                 </div>
                 <div>
                     <label>Teléfono Trabajo</label>
-                    <input type="tel" id="regWorkPhone" class="btn-secondary"
-                        style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="(809)...">
+                    <input type="tel" id="regWorkPhone" placeholder="(809)...">
                 </div>
 
                 <!-- Sección 3: Referencias y Fiador -->
@@ -300,18 +275,17 @@
 
 
         <!-- Dynamic Client Data -->
-        <div class="card profile-header glass" id="profileHeader">
-            <div class="profile-avatar">👤</div>
+        <div class="card profile-header" id="profileHeader">
+            <div class="initials large">👤</div>
             <div class="profile-info">
                 <h2 id="clientName">Cargando cliente...</h2>
-                <p id="clientIdDisplay">ID: ...</p>
-                <div style="display: flex; gap: 1rem; flex-wrap: wrap; margin-top: 0.5rem;">
-                    <p id="clientAddress">📍 ...</p>
-                    <p id="clientPhone">📞 ...</p>
+                <div class="profile-meta">
+                    <span id="clientIdDisplay">ID: ...</span>
+                    <span id="clientAddress">📍 ...</span>
+                    <span id="clientPhone">📞 ...</span>
                 </div>
             </div>
-            <div class="header-actions"
-                style="margin-left: auto; display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-end;">
+            <div class="header-actions">
                 <span class="status-badge status-active" id="clientStatusBadge">ACTIVO</span>
                 <button class="btn btn-primary" onclick="document.getElementById('newLoanModal').style.display='flex'">
                     <span>💰</span> Nuevo Préstamo
@@ -544,62 +518,54 @@
     </div>
 
     <!-- MODAL: Registrar Cobro -->
-    <div id="paymentModal" class="modal"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-        <div class="card" style="width: 90%; max-width: 500px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
-                <h2 style="margin:0;">💰 Registrar Cobro</h2>
+    <div id="paymentModal" class="modal">
+        <div class="card">
+            <div class="flex-between mb-2">
+                <h2 class="m-0">💰 Registrar Cobro</h2>
                 <button onclick="document.getElementById('paymentModal').style.display='none'"
-                    style="background:none; border:none; font-size:1.5rem; cursor:pointer;">&times;</button>
+                    class="btn-close">&times;</button>
             </div>
 
             <form id="paymentForm">
-                <div
-                    style="background: var(--bg-main); padding: 1.5rem; border-radius: 12px; margin-bottom: 2rem; border: 1px solid var(--border);">
+                <div class="payment-summary-box mb-2">
                     <div class="flex-between mb-1">
-                        <span class="text-secondary" style="font-weight: 700;">Interés Pendiente:</span>
-                        <strong id="displayInterestPending"
-                            style="color: var(--text-primary); font-size: 1.1rem;">$0.00</strong>
+                        <span class="text-muted">Interés Pendiente:</span>
+                        <strong id="displayInterestPending" class="text-main">$0.00</strong>
                     </div>
-                    <div class="flex-between mb-1" style="color: var(--danger);">
-                        <span style="font-weight: 700;">Mora:</span>
-                        <strong id="displayMoraPending" style="font-size: 1.1rem;">$0.00</strong>
+                    <div class="flex-between mb-1">
+                        <span class="text-danger">Mora Pendiente:</span>
+                        <strong id="displayMoraPending" class="text-danger">$0.00</strong>
                     </div>
-                    <div class="flex-between mt-1" style="border-top: 2px solid var(--border); padding-top: 1rem;">
-                        <span style="font-weight: 800; color: var(--text-primary);">Total a Pagar:</span>
-                        <strong id="displayTotalDue"
-                            style="font-size: 1.3rem; color: var(--primary); font-weight: 900;">$0.00</strong>
+                    <div class="flex-between border-top-dark pt-1 mt-1">
+                        <span class="text-main-bold">Total a Pagar:</span>
+                        <strong id="displayTotalDue" class="text-accent text-xl">$0.00</strong>
                     </div>
                 </div>
 
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Monto Recibido ($)</label>
-                    <input type="number" step="0.01" id="paymentAmount" class="form-control"
-                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px; font-size:1.2rem; font-weight:bold;">
+                <div class="mb-1">
+                    <label>Monto Recibido ($)</label>
+                    <input type="number" step="0.01" id="paymentAmount" required class="input-lg">
                 </div>
 
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tipo de Aplicación</label>
-                    <select id="paymentType"
-                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                <div class="mb-1">
+                    <label>Tipo de Aplicación</label>
+                    <select id="paymentType">
                         <option value="inteligente">Automático (Mora -> Interés -> Capital)</option>
                         <option value="solo_interes">Solo Interés (Amortizar Deuda)</option>
                         <option value="abono_capital_directo">Abono Extraordinario a Capital</option>
                     </select>
                 </div>
 
-                <div style="margin-bottom:1rem;">
-                    <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Origen de Fondos</label>
-                    <select id="paymentOrigin"
-                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
+                <div class="mb-2">
+                    <label>Origen de Fondos</label>
+                    <select id="paymentOrigin">
                         <option value="efectivo">Efectivo</option>
                         <option value="transferencia">Transferencia Bancaria</option>
                         <option value="cheque">Cheque</option>
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-primary w-full"
-                    style="justify-content:center; height: 55px; font-size: 1.1rem;">
+                <button type="submit" class="btn btn-primary w-full h-lg">
                     Procesar Pago & Generar Recibo
                 </button>
             </form>
@@ -613,7 +579,7 @@
     <script src="/__/firebase/10.7.1/firebase-functions-compat.js"></script>
     <script src="/__/firebase/init.js"></script>
 
-    <script src="app.js?v=13.0"></script>
+    <script src="app.js?v=13.3"></script>
     <script>
         // Scripts moved to app.js
     </script>
