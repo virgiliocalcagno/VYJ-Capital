@@ -408,8 +408,9 @@ RESPONDE ÚNICAMENTE CON ESTE JSON (sin markdown, sin backticks):
         });
 
         const result = await groundedModel.generateContent(kycPrompt);
-        const response = await result.response;
-        const text = response.text() || "";
+        const response = result.response;
+        // Fix: Acceder a candidates en lugar de .text()
+        const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
         if (text) {
             const parsed = extractJSON(text);
@@ -432,8 +433,9 @@ RESPONDE ÚNICAMENTE CON ESTE JSON (sin markdown, sin backticks):
         });
 
         const result = await plainModel.generateContent(kycPrompt);
-        const response = await result.response;
-        const text = response.text() || "";
+        const response = result.response;
+        // Fix: Acceder a candidates en lugar de .text()
+        const text = response?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
         if (!text) throw new Error("La IA no devolvió ninguna respuesta en ningún intento.");
 
