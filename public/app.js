@@ -608,7 +608,7 @@ async function loadClientProfile(id) {
                         style="display:flex; justify-content:space-between; align-items:center; background:white; padding:0.5rem 0.75rem; border-radius:6px; border:1px solid #eee; text-decoration:none; color:#1f2937; transition: transform 0.1s;"
                         onmouseover="this.style.transform='translateX(2px)'" onmouseout="this.style.transform='none'">
                         <span style="font-size:0.8rem; font-weight:500;">${p.plataforma || p.nombre || 'Desconocido'}</span>
-                        <span style="font-size:0.65rem; color:var(--primary-color);">Abrir ↗</span>
+                        <span style="font-size:0.65rem; color:var(--primary);">Abrir ↗</span>
                     </a>
                 `).join('');
             }
@@ -1016,7 +1016,7 @@ window.runKYCAuditV9 = async function () {
 
     } catch (error) {
         console.error("KYC Error:", error);
-        summaryEl.innerHTML = `<p style="color:var(--danger-color); margin:0;">❌ ${error.message || 'Error desconocido en la auditoría.'}</p>`;
+        summaryEl.innerHTML = `<p style="color:var(--danger); margin:0;">❌ ${error.message || 'Error desconocido en la auditoría.'}</p>`;
         linksEl.innerHTML = "";
         badgesEl.innerHTML = "";
     } finally {
@@ -1185,7 +1185,7 @@ function loadClientDocuments(clientId) {
                         <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                             <span class="evidence-name" title="${data.nombre}">${data.nombre}</span>
                             <button onclick="deleteDocument('${clientId}', '${docId}', '${data.path || ''}')" 
-                                style="background:none; border:none; cursor:pointer; color:var(--danger-color); font-size:1rem; padding:0;">🗑️</button>
+                                style="background:none; border:none; cursor:pointer; color:var(--danger); font-size:1rem; padding:0;">🗑️</button>
                         </div>
                         <span class="evidence-date">${data.fecha ? new Date(data.fecha.seconds * 1000).toLocaleDateString() : 'Reciente'}</span>
                     </div>
