@@ -1276,9 +1276,11 @@ window.filterClients = function (query) {
 
 // --- Reporting Logic ---
 window.generarReporteEstado = async function(loanId) {
+    try {
+        console.log("Abriendo reporte para el préstamo:", loanId);
     const loanDoc = await db.collection('prestamos').doc(loanId).get();
     if(!loanDoc.exists) return alert("Préstamo no encontrado");
-    const loan = loanDoc.data();
+    const loan = { id: loanDoc.id, ...loanDoc.data() };
     
     // Fetch Transactions - REMOVED orderBy to avoid index error
     const txSnapshot = await db.collection('transactions')
@@ -1353,144 +1355,166 @@ window.generarReporteEstado = async function(loanId) {
     modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; overflow-y:auto; padding:1.5rem; display:flex; justify-content:center;";
     
     modal.innerHTML = `
-        <div class="card glass report-paper" style="max-width:900px; width:100%; height:fit-content; background:white; color:black; padding:2rem !important; border-radius:0;">
-            <div class="flex-between mb-1">
+        <div class="card glass report-paper" style="max-width:900px; width:100%; height:fit-content; background:white; color:black; padding:2rem !important; border-radius:12px;">
+            <div class="flex-between mb-1" style="display:flex; justify-content:space-between; align-items:start;">
                 <div style="text-align:left;">
-                    <h1 style="margin:0; font-family:'Outfit'; color:var(--primary); font-size:2.2rem; letter-spacing:-1px;">VYJ CAPITAL</h1>
+                    <h1 style="margin:0; font-family:'Outfit'; color:#2563eb; font-size:2.2rem; letter-spacing:-1px;">VYJ CAPITAL</h1>
                     <p style="margin:0; color:#64748b; font-weight:600; font-size:0.9rem;">Gestión de Préstamos e Inversiones</p>
                 </div>
-                <div class="no-print" style="display:flex; gap:0.5rem;">
-                    <button onclick="window.print()" class="btn btn-primary" style="padding:0.5rem 1rem;">🖨️ Imprimir</button>
-                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.remove()" class="btn btn-secondary" style="padding:0.5rem 1rem;">Cerrar ✕</button>
+                <div class="no-print" style="display:flex; gap:0.5rem; position: sticky; top: 0; background: white; padding: 10px; z-index: 10;">
+                    <button id="btnImprimirReal" class="btn btn-primary" style="padding:0.5rem 1rem; font-weight:800; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">🖨️ Generar PDF / Imprimir</button>
+                    <button onclick="document.getElementById('reportOverlay').remove()" class="btn btn-secondary" style="padding:0.5rem 1rem; background:#f1f5f9; border:none; border-radius:6px; cursor:pointer;">Cerrar ✕</button>
                 </div>
             </div>
             
-            <hr style="border:0; border-top:1px solid #000; margin:1.5rem 0;">
+            <div id="reporteAImprimir">
+                <hr style="border:0; border-top:2px solid #000; margin:1rem 0;">
 
-            <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; margin-bottom:1.5rem; font-size:0.95rem;">
-                <div>
-                    <p style="margin:0.25rem 0;"><strong>CLIENTE:</strong> ${loan.nombre_cliente}</p>
-                    <p style="margin:0.25rem 0;"><strong>CAPITAL UNIFICADO:</strong> ${formatCurrency(loan.monto_principal)}</p>
+                <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; margin-bottom:1.5rem; font-size:0.95rem;">
+                    <div>
+                        <p style="margin:0.25rem 0; font-size:1.1rem;"><strong>CLIENTE:</strong> <span style="text-transform:uppercase;">${loan.nombre_cliente}</span></p>
+                        <p style="margin:0.25rem 0;"><strong>CAPITAL UNIFICADO:</strong> ${formatCurrency(loan.monto_principal)}</p>
+                        <p style="margin:0.25rem 0;"><strong>NÚMERO DE PRÉSTAMO:</strong> ${loan.id.substring(0,8).toUpperCase()}</p>
+                    </div>
+                    <div style="text-align:right;">
+                        <p style="margin:0.25rem 0;"><strong>FECHA DE CORTE:</strong> ${new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                        <p style="margin:0.25rem 0;"><strong>TASA DE INTERÉS:</strong> ${loan.tasa_mensual * 100}% Mensual</p>
+                        <p style="margin:0.25rem 0;"><strong>ESTADO:</strong> <span style="color:#dc2626; font-weight:bold;">${loan.estado}</span></p>
+                    </div>
                 </div>
-                <div style="text-align:right;">
-                    <p style="margin:0.25rem 0;"><strong>FECHA:</strong> ${new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                    <p style="margin:0.25rem 0;"><strong>TASA:</strong> ${loan.tasa_mensual * 100}% Mensual</p>
-                </div>
-            </div>
 
-            <table class="report-table" style="width:100%; border-collapse: collapse; margin: 1rem 0; font-size:0.8rem;">
-                <thead style="background:var(--primary); color:white; text-align:left;">
-                    <tr>
-                        <th style="padding:0.6rem;">FECHA</th>
-                        <th style="padding:0.6rem;">DESCRIPCIÓN</th>
-                        <th style="padding:0.6rem; text-align:right;">CARGOS (+)</th>
-                        <th style="padding:0.6rem; text-align:right;">PAGOS (-)</th>
-                        <th style="padding:0.6rem; text-align:right;">BAL. RÉDITOS</th>
-                        <th style="padding:0.6rem; text-align:right;">BAL. CAPITAL</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr style="background: #f1f5f9; font-weight: bold;">
-                        <td>INICIO</td>
-                        <td>Capital Inicial Unificado</td>
-                        <td style="text-align:right;">-</td>
-                        <td style="text-align:right;">-</td>
-                        <td style="text-align:right;">$0.00</td>
-                        <td style="text-align:right;">${formatCurrency(loan.monto_principal)}</td>
-                    </tr>
-                    ${(() => {
-                        let currentCap = loan.monto_principal;
-                        let currentInt = 0;
-                        let rows = [];
+                <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0; font-size:0.85rem; border:1px solid #e2e8f0;">
+                    <thead>
+                        <tr style="background:#1e293b; color:white; text-align:left;">
+                            <th style="padding:0.75rem; border:1px solid #1e293b;">FECHA</th>
+                            <th style="padding:0.75rem; border:1px solid #1e293b;">DESCRIPCIÓN</th>
+                            <th style="padding:0.75rem; border:1px solid #1e293b; text-align:right;">CARGOS (+)</th>
+                            <th style="padding:0.75rem; border:1px solid #1e293b; text-align:right;">PAGOS (-)</th>
+                            <th style="padding:0.75rem; border:1px solid #1e293b; text-align:right;">BAL. RÉDITOS</th>
+                            <th style="padding:0.75rem; border:1px solid #1e293b; text-align:right;">BAL. CAPITAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr style="background: #f8fafc; font-weight: bold; border-bottom:2px solid #cbd5e1;">
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0;">INICIO</td>
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0;">SALDO INICIAL DEL PRÉSTAMO</td>
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0; text-align:right;">-</td>
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0; text-align:right;">-</td>
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0; text-align:right;">$0.00</td>
+                            <td style="padding:0.75rem; border:1px solid #e2e8f0; text-align:right;">${formatCurrency(loan.monto_principal)}</td>
+                        </tr>
+                        ${(() => {
+                            let currentCap = loan.monto_principal;
+                            let currentInt = 0;
+                            let rows = [];
+                            const paymentTypes = ['inteligente', 'solo_interes', 'abono_capital', 'pago_mixto', 'pago_fijo', 'pago_historico'];
+                            const chargeTypes = ['cargo_historico', 'cargo_interes', 'cargo_mora'];
 
-                        // Definir qué es cargo y qué es pago
-                        const paymentTypes = ['inteligente', 'solo_interes', 'abono_capital', 'pago_mixto', 'pago_fijo'];
-                        const chargeTypes = ['cargo_historico', 'cargo_interes', 'cargo_mora'];
+                            txs.forEach(t => {
+                                if (t.monto_total === loan.monto_principal && (t.nota || '').includes('INICIAL')) return;
+                                
+                                const date = t.fecha ? (t.fecha.toDate ? t.fecha.toDate() : new Date(t.fecha)) : new Date();
+                                const formattedDate = date.toLocaleDateString('es-DO', { day: '2-digit', month: '2-digit', year: 'numeric' });
+                                
+                                let cargo = 0;
+                                let pago = 0;
+                                let detalle = t.nota || t.tipo_pago;
 
-                        txs.forEach(t => {
-                            // Ignorar si es un cargo que solo repite el capital inicial
-                            if (t.monto_total === loan.monto_principal && t.tipo_pago === 'cargo_historico' && (t.nota || '').includes('INICIAL')) return;
-                            
-                            const date = t.fecha ? (t.fecha.toDate ? t.fecha.toDate() : new Date(t.fecha)) : new Date();
-                            const formattedDate = date.toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
-                            
-                            let cargo = 0;
-                            let pago = 0;
-                            let detalle = t.nota || t.tipo_pago;
-
-                            if (chargeTypes.includes(t.tipo_pago)) {
-                                cargo = t.monto_total;
-                                currentInt += cargo;
-                            } else if (paymentTypes.includes(t.tipo_pago)) {
-                                pago = t.monto_total;
-                                // Aplicar pago: Primero a intereses/mora, luego a capital
-                                if (pago <= currentInt) {
-                                    currentInt -= pago;
-                                } else {
-                                    let sobrante = pago - currentInt;
-                                    currentInt = 0;
-                                    currentCap -= sobrante;
+                                if (chargeTypes.includes(t.tipo_pago)) {
+                                    cargo = t.monto_total;
+                                    currentInt += cargo;
+                                } else if (paymentTypes.includes(t.tipo_pago)) {
+                                    pago = t.monto_total;
+                                    if (pago <= currentInt) {
+                                        currentInt -= pago;
+                                    } else {
+                                        let sobrante = pago - currentInt;
+                                        currentInt = 0;
+                                        currentCap -= sobrante;
+                                    }
                                 }
-                            }
 
-                            rows.push(`
-                                <tr style="border-bottom: 1px solid #eee; ${pago > 0 ? 'background: #f0fdf4;' : ''}">
-                                    <td style="padding:0.5rem;">${formattedDate}</td>
-                                    <td style="padding:0.5rem; color:#444;">${detalle}</td>
-                                    <td style="padding:0.5rem; text-align:right; color:${cargo > 0 ? '#dc2626' : '#999'};">
-                                        ${cargo > 0 ? formatCurrency(cargo) : '-'}
-                                    </td>
-                                    <td style="padding:0.5rem; text-align:right; color:#059669; font-weight:bold;">
-                                        ${pago > 0 ? formatCurrency(pago) : '-'}
-                                    </td>
-                                    <td style="padding:0.5rem; text-align:right; font-weight:600; color:${currentInt > 0 ? '#000' : '#94a3b8'};">
-                                        ${formatCurrency(currentInt)}
-                                    </td>
-                                    <td style="padding:0.5rem; text-align:right; font-weight:bold;">
-                                        ${formatCurrency(currentCap)}
-                                    </td>
-                                </tr>
-                            `);
-                        });
-                        return rows.join('');
-                    })()}
-                </tbody>
-            </table>
+                                rows.push(`
+                                    <tr style="border-bottom: 1px solid #e2e8f0; ${pago > 0 ? 'background: #f0fdf4;' : ''}">
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0;">${formattedDate}</td>
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0; font-size:0.75rem;">${detalle}</td>
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0; text-align:right; color:${cargo > 0 ? '#dc2626' : '#94a3b8'};">
+                                            ${cargo > 0 ? formatCurrency(cargo) : '-'}
+                                        </td>
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0; text-align:right; color:#059669; font-weight:bold;">
+                                            ${pago > 0 ? formatCurrency(pago) : '-'}
+                                        </td>
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0; text-align:right; font-weight:600;">
+                                            ${formatCurrency(currentInt)}
+                                        </td>
+                                        <td style="padding:0.6rem; border:1px solid #e2e8f0; text-align:right; font-weight:bold;">
+                                            ${formatCurrency(currentCap)}
+                                        </td>
+                                    </tr>
+                                `);
+                            });
+                            return rows.join('');
+                        })()}
+                    </tbody>
+                </table>
 
-            <div style="margin-top:2rem; display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
-                <div style="border: 2px solid #e2e8f0; padding:1.5rem; border-radius:12px; background: #f8fafc;">
-                    <h4 style="margin:0 0 1.25rem 0; font-size:0.9rem; color:#1e293b; text-transform:uppercase; border-bottom:1px solid #e2e8f0; padding-bottom:0.5rem; font-weight:800;">RESUMEN DE SALDOS</h4>
-                    <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1rem; color:#475569;">
-                        <span>Capital Pendiente:</span> 
-                        <strong style="color:#000;">${formatCurrency(loan.capital_actual)}</strong>
-                    </p>
-                    <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1rem; color:#475569;">
-                        <span>Réditos Pendientes:</span> 
-                        <strong style="color:#000;">${formatCurrency(loan.interes_pendiente + (loan.mora_acumulada || 0))}</strong>
-                    </p>
-                    <hr style="border:0; border-top:2px solid #e2e8f0; margin:1rem 0;">
-                    <p style="display:flex; justify-content:space-between; margin:0; font-size:1.25rem; color:var(--primary); font-weight:900;">
-                        <span>TOTAL GENERAL:</span> 
-                        <strong style="color:var(--primary);">${formatCurrency(runningBalance)}</strong>
-                    </p>
+                <div style="margin-top:2.5rem; display:grid; grid-template-columns: 1fr 1fr; gap:3rem;">
+                    <div style="border: 3px solid #1e293b; padding:1.5rem; border-radius:8px; background: #fff;">
+                        <h4 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; text-transform:uppercase; border-bottom:2px solid #1e293b; padding-bottom:0.5rem; font-weight:900;">ESTADO ACTUAL DE CUENTA</h4>
+                        <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1.1rem;">
+                            <span>Capital Balance:</span> 
+                            <strong style="color:#000;">${formatCurrency(loan.capital_actual)}</strong>
+                        </p>
+                        <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1.1rem;">
+                            <span>Intereses/Moras:</span> 
+                            <strong style="color:#000;">${formatCurrency(loan.interes_pendiente)}</strong>
+                        </p>
+                        <hr style="border:0; border-top:2px solid #1e293b; margin:1rem 0;">
+                        <p style="display:flex; justify-content:space-between; margin:0; font-size:1.4rem; color:#2563eb; font-weight:950;">
+                            <span>TOTAL DEUDA:</span> 
+                            <strong>${formatCurrency(loan.capital_actual + loan.interes_pendiente)}</strong>
+                        </p>
+                    </div>
+                    <div style="text-align:center; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;">
+                        <div style="width:250px; border-top:2px solid #000; margin-bottom:0.5rem;"></div>
+                        <p style="margin:0; font-weight:900; font-size:1rem; color:#000; text-transform:uppercase;">Firma Autorizada</p>
+                        <p style="margin:0; font-size:0.85rem; color:#475569;">VYJ CAPITAL - DPTO. COBROS</p>
+                    </div>
                 </div>
-                <div style="text-align:center; padding-top:2rem;">
-                    <div style="width:200px; border-top:1.5px solid #000; margin: 4.5rem auto 0.5rem auto;"></div>
-                    <p style="margin:0; font-weight:800; font-size:0.85rem; color:#000;">Firma Autorizada</p>
-                    <p style="margin:0; font-size:0.75rem; color:#64748b;">VYJ CAPITAL</p>
-                </div>
-            </div>
 
-            <div style="margin-top:3rem; text-align:left; font-size:0.75rem; color:#94a3b8; line-height:1.4;">
-                <p>Nota: Este informe separa los cargos por Réditos (intereses y moras) de los movimientos de Capital para mayor transparencia.</p>
-                <div style="font-size: 0.55rem; opacity: 0.4; line-height: 1; margin-top: 10px;">
-                    <p style="margin:2px 0;">* Se aplicará un cargo de mora del 5% sobre los réditos adeudados si las cuotas tienen más de 12 días de atraso.</p>
-                    <p style="margin:2px 0;">* Penalidad adicional calculada en base al 12% sobre saldos en atraso prolongado.</p>
+                <div style="margin-top:4rem; text-align:center; font-size:0.7rem; color:#94a3b8; border-top:1px solid #eee; pt-2">
+                    <p style="margin:5px 0;">Este documento es un extracto oficial de movimientos generado por el sistema central de VYJ Capital.</p>
+                    <p style="margin:5px 0;">© ${new Date().getFullYear()} VYJ Capital Investments. Todos los derechos reservados.</p>
                 </div>
-                <p style="margin-top: 10px;">Generado digitalmente por el sistema VYJ Capital - ${new Date().toLocaleString()}</p>
             </div>
         </div>
     `;
+
     document.body.appendChild(modal);
-};
+
+    // Lógica de Impresión Profesional
+    document.getElementById('btnImprimirReal').onclick = function() {
+        const contenidoHTML = document.getElementById('reporteAImprimir').innerHTML;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write('<html><head><title>VYJ Capital - Estado de Cuenta</title>');
+        printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">');
+        printWindow.document.write('<style>body{font-family:Inter, sans-serif; padding:40px; color:#000;} h1{color:#2563eb;} table{width:100%; border-collapse:collapse; margin-top:20px;} th, td{border:1px solid #e2e8f0; padding:8px; text-align:left;} @media print{.no-print{display:none;}}</style>');
+        printWindow.document.write('</head><body>');
+        printWindow.document.write('<div style="text-align:left; margin-bottom:20px;"><h1 style="margin:0;">VYJ CAPITAL</h1><p style="margin:0; font-weight:bold;">Estado de Cuenta Oficial</p></div>');
+        printWindow.document.write(contenidoHTML);
+        printWindow.document.write('</body></html>');
+        printWindow.document.close();
+        setTimeout(function() {
+            printWindow.print();
+        }, 500);
+    }; // Cierre de onclick
+    } catch (error) {
+        console.error("Error al generar el reporte:", error);
+        alert("❌ No se pudo abrir el reporte: " + error.message);
+    }
+}; // Cierre de generarReporteEstado
+
+// Asignación de alias al final para asegurar carga
+window.generarReporteTabla = window.generarReporteEstado;
+console.log("Sistema de Reportes VYJ Capital v12.2 Cargado.");
 
