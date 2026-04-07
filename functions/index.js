@@ -277,6 +277,13 @@ exports.scanDocument = functions.https.onCall(async (data, context) => {
             
             RESPONDER ÚNICAMENTE EN JSON:
             { "descripcion": "...", "valor_estimado": 0.00 }`;
+        } else if (docType === 'receipt') {
+            prompt = `Actúa como un experto en validación de pagos bancarios.
+            Analiza esta imagen de un comprobante de transferencia bancaria y devuelve un JSON estricto con: 
+            monto_pagado (número), fecha (string), y banco_origen (string).
+            
+            RESPONDE ÚNICAMENTE CON ESTE FORMATO JSON:
+            { "monto_pagado": 0.00, "fecha": "...", "banco_origen": "..." }`;
         }
 
         const request = {
