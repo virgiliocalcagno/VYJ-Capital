@@ -314,6 +314,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 const amount = parseFloat(document.getElementById('paymentAmount').value);
                 const paymentType = document.getElementById('paymentType').value;
+                const paymentOrigin = document.getElementById('paymentOrigin').value;
 
                 if (!amount || amount <= 0) throw new Error("Monto inválido");
 
@@ -321,53 +322,49 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 await db.runTransaction(async (transaction) => {
                     const doc = await transaction.get(loanRef);
-                    if (!doc.exists) throw "Loan does not exist!";
+                    if (!doc.exists) throw "Préstamo no existe";
 
                     const data = doc.data();
                     let remaining = amount;
                     let paymentBreakdown = { mora: 0, interes: 0, capital: 0 };
 
-                    // 1. Pay Mora (Always First)
-                    const moraPending = data.mora_acumulada || 0;
-                    if (moraPending > 0) {
-                        const payMora = Math.min(remaining, moraPending);
-                        paymentBreakdown.mora = payMora;
-                        remaining -= payMora;
-                    }
-
-                    // 2. Pay Interest
-                    const interestPending = data.interes_pendiente || 0;
-                    if (remaining > 0 && interestPending > 0) {
-                        if (paymentType === 'abono_capital_directo') {
-                            // Skip interest? Usually not allowed, but if requested...
-                            // Better logic: Interest is mandatory unless specific 'Principal Only' payment allowed by policy.
-                            // Assuming 'Smart' logic: Interest is next priority.
+                    if (paymentType === 'inteligente') {
+                        // 1. Pay Mora
+                        const moraPending = data.mora_acumulada || 0;
+                        if (moraPending > 0) {
+                            const payMora = Math.min(remaining, moraPending);
+                            paymentBreakdown.mora = payMora;
+                            remaining -= payMora;
                         }
-                        const payInterest = Math.min(remaining, interestPending);
-                        paymentBreakdown.interes = payInterest;
-                        remaining -= payInterest;
-                    }
 
-                    // 3. Capital (Whatever is left)
-                    if (remaining > 0) {
-                        if (paymentType === 'solo_interes') {
-                            // Do not pay capital, maybe store as positive balance? 
-                            // For now, let's assume 'solo_interes' just caps payment at interest+mora in UI, 
-                            // but if they pay more, it goes to capital.
-                            paymentBreakdown.capital = remaining;
-                        } else {
+                        // 2. Pay Interest
+                        const interestPending = data.interes_pendiente || 0;
+                        if (remaining > 0 && interestPending > 0) {
+                            const payInterest = Math.min(remaining, interestPending);
+                            paymentBreakdown.interes = payInterest;
+                            remaining -= payInterest;
+                        }
+
+                        // 3. Capital (Whatever is left)
+                        if (remaining > 0) {
                             paymentBreakdown.capital = remaining;
                         }
+                    } else if (paymentType === 'solo_interes') {
+                        paymentBreakdown.interes = amount;
+                    } else if (paymentType === 'abono_capital_directo') {
+                        paymentBreakdown.capital = amount;
                     }
 
-                    const newCapital = (data.capital_actual || 0) - paymentBreakdown.capital;
+                    const oldCapital = data.capital_actual || 0;
+                    const newCapital = oldCapital - paymentBreakdown.capital;
+                    const newInterest = (data.interes_pendiente || 0) - paymentBreakdown.interes;
+                    const newMora = (data.mora_acumulada || 0) - paymentBreakdown.mora;
 
-                    // Update Loan
                     transaction.update(loanRef, {
-                        mora_acumulada: moraPending - paymentBreakdown.mora,
-                        interes_pendiente: interestPending - paymentBreakdown.interes,
-                        capital_actual: newCapital,
-                        estado: newCapital <= 1 ? 'SALDADO' : 'ACTIVO', // Tolerance for float errors
+                        mora_acumulada: Math.max(0, newMora),
+                        interes_pendiente: Math.max(0, newInterest),
+                        capital_actual: Math.max(0, newCapital),
+                        estado: newCapital <= 5 ? 'SALDADO' : (newMora > 0 ? 'MORA' : 'ACTIVO'),
                         ultimo_pago: firebase.firestore.FieldValue.serverTimestamp()
                     });
 
@@ -375,27 +372,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const transRef = db.collection('transactions').doc();
                     transaction.set(transRef, {
                         loan_id: loanId,
+                        cliente_id: data.cliente_id,
+                        nombre_cliente: data.nombre_cliente,
                         fecha: firebase.firestore.FieldValue.serverTimestamp(),
                         monto_total: amount,
                         desglose: paymentBreakdown,
-                        nuevo_saldo: newCapital,
-                        tipo_pago: paymentType
+                        nuevo_saldo: Math.max(0, newCapital),
+                        tipo_pago: paymentType,
+                        origen: paymentOrigin
                     });
                 });
 
-                alert(`✅ Pago Procesado.\n\nMora: ${formatCurrency(amount - (amount - (data.mora_acumulada || 0)) < 0 ? amount : data.mora_acumulada)}\nInterés: ...\nCapital: ...\n\n(Ver Recibo para detalle)`);
+                alert(`✅ Pago Procesado con éxito.`);
                 document.getElementById('paymentModal').style.display = 'none';
-
-                // Refresh
-                const params = new URLSearchParams(window.location.search);
-                if (params.get('id')) loadClientProfile(params.get('id'));
+                loadClientProfile(new URLSearchParams(window.location.search).get('id'));
 
             } catch (error) {
                 console.error("Payment Error:", error);
-                alert("❌ Error procesando pago: " + error.message);
+                alert("❌ Error: " + error.message);
             } finally {
                 btn.disabled = false;
-                btn.innerText = "Procesar Pago";
+                btn.innerText = "Procesar Pago & Generar Recibo";
             }
         };
     }
@@ -675,8 +672,8 @@ function renderLoanCard(loanId, loan, container) {
             <button class="btn btn-primary w-full" onclick="openPaymentModal('${loanId}', ${loan.capital_actual}, ${loan.interes_pendiente || 0}, ${loan.mora_acumulada || 0})">
                 💰 Registrar Cobro
             </button>
-            <button class="btn btn-secondary" style="border: none;">
-                📄 Tabla
+            <button class="btn btn-secondary w-full" onclick="generarReporteEstado('${loanId}')">
+                📄 Tabla / Informe
             </button>
         </div>
     </div>
@@ -1277,60 +1274,223 @@ window.filterClients = function (query) {
     renderClientsGrid(filtered);
 };
 
-window.deleteClient = async function (id, nombre) {
-    if (!confirm(`¿Estás seguro de que deseas eliminar a ${nombre}? Esta acción no se puede deshacer y borrará permanentemente su expediente.`)) {
-        return;
-    }
+// --- Reporting Logic ---
+window.generarReporteEstado = async function(loanId) {
+    const loanDoc = await db.collection('prestamos').doc(loanId).get();
+    if(!loanDoc.exists) return alert("Préstamo no encontrado");
+    const loan = loanDoc.data();
+    
+    // Fetch Transactions - REMOVED orderBy to avoid index error
+    const txSnapshot = await db.collection('transactions')
+        .where('loan_id', '==', loanId)
+        .get();
 
-    try {
-        await db.collection('clientes').doc(id).delete();
-        alert("Cliente eliminado correctamente.");
-    } catch (err) {
-        console.error("Error deleting client:", err);
-        alert("Error al eliminar cliente: " + err.message);
-    }
-};
+    // Sort in memory to avoid missing index error
+    const txs = [];
+    txSnapshot.forEach(doc => txs.push({ id: doc.id, ...doc.data() }));
+    txs.sort((a, b) => (a.fecha?.seconds || 0) - (b.fecha?.seconds || 0));
 
-// --- Seed Data Helper (For Demo Purposes) ---
-window.seedDatabase = async function () {
-    const db = firebase.firestore();
-    const btn = document.getElementById('seedBtn');
-    if (btn) btn.innerText = "Creando datos...";
+    let historyHtml = '';
+    let runningBalance = loan.monto_principal;
 
-    try {
-        // 1. Create Client
-        const clientRef = await db.collection('clientes').add({
-            nombre: "Juan Pérez",
-            cedula: "001-0000001-1",
-            direccion: "Calle Sol #45, Santiago",
-            telefono: "(809) 555-0101",
-            fecha_registro: firebase.firestore.FieldValue.serverTimestamp(),
-            solidario: { nombre: "Maria Lopez", cedula: "001-0000000-2", telefono: "809-111-2233", referencia_laboral: "Cajero" }
-        });
+    // Fila inicial: Capital Unificado
+    historyHtml += `
+        <tr style="background: #f8fafc; font-weight: bold;">
+            <td>INICIO</td>
+            <td>CAPITAL UNIFICADO INICIAL</td>
+            <td style="color: var(--primary); font-weight:bold;">${formatCurrency(loan.monto_principal)}</td>
+            <td>-</td>
+            <td>${formatCurrency(loan.monto_principal)}</td>
+        </tr>
+    `;
 
-        // 2. Create Loan for Client
-        await db.collection('prestamos').add({
-            cliente_id: clientRef.id,
-            nombre_cliente: "Juan Pérez", // Denormalized for easier search/display
-            monto_principal: 10000,
-            capital_actual: 8000,
-            tasa_mensual: 0.1,
-            metodo: "REDITO_PURO",
-            mora_acumulada: 200,
-            estado: "MORA",
-            plazo_meses: 6,
-            fecha_inicio: firebase.firestore.FieldValue.serverTimestamp(),
-            proximo_pago: firebase.firestore.FieldValue.serverTimestamp(),
-            garantia: { tipo: "Vehiculo", descripcion: "Motor Honda C50", fotos: [] },
-            fiador_nombre: "Pedro Martinez"
-        });
+    txs.forEach(tx => {
+        const date = tx.fecha ? new Date(tx.fecha.seconds * 1000).toLocaleDateString('es-DO', { month: 'long', day: 'numeric' }) : 'N/A';
+        const isPayment = ['inteligente', 'solo_interes', 'abono_capital_directo'].includes(tx.tipo_pago);
+        const isCargo = tx.tipo_pago === 'cargo_historico';
+        
+        if (isCargo) {
+            runningBalance += tx.monto_total;
+            historyHtml += `
+                <tr>
+                    <td style="text-transform: uppercase; font-size:0.8rem;">${date.split(' de ')[1] || date}</td>
+                    <td style="font-size:0.8rem;">${tx.nota || 'Interés o Mora'}</td>
+                    <td>-</td>
+                    <td style="color:var(--danger); font-weight:600;">${formatCurrency(tx.monto_total)}</td>
+                    <td>-</td>
+                    <td style="font-weight:700;">${formatCurrency(runningBalance)}</td>
+                </tr>
+            `;
+        } else if (isPayment) {
+            runningBalance -= tx.monto_total;
+            const capPaid = tx.desglose?.capital || 0;
+            const intPaid = (tx.desglose?.interes || 0) + (tx.desglose?.mora || 0);
+            
+            historyHtml += `
+                <tr style="background: #f0fdf4;">
+                    <td style="text-transform: uppercase; font-size:0.8rem;">${date.split(' de ')[1] || date}</td>
+                    <td style="font-weight:700; font-size:0.8rem;">PAGO: ${tx.origen || 'Efectivo'}</td>
+                    <td style="color:#64748b; font-size:0.8rem;">${capPaid > 0 ? '-' + formatCurrency(capPaid) : '-'}</td>
+                    <td style="color:#64748b; font-size:0.8rem;">${intPaid > 0 ? '-' + formatCurrency(intPaid) : '-'}</td>
+                    <td class="text-success" style="color:#16a34a !important; font-weight:800;">${formatCurrency(tx.monto_total)}</td>
+                    <td style="font-weight:800;">${formatCurrency(runningBalance)}</td>
+                </tr>
+            `;
+        }
+    });
 
-        alert("✅ Datos de Prueba Creados.\n\nIntenta buscar la cédula: 001-0000001-1");
-        location.reload();
+    // Corte final
+    historyHtml += `
+        <tr style="border-top: 3px solid var(--primary); background: #fff; font-weight:800;">
+            <td colspan="4" style="text-align:right; padding:1.5rem;">TOTAL PENDIENTE A LA FECHA:</td>
+            <td colspan="2" style="text-align:right; font-size:1.5rem; color:var(--primary); padding:1.5rem;">${formatCurrency(runningBalance)}</td>
+        </tr>
+    `;
 
-    } catch (e) {
-        console.error(e);
-        alert("Error creando datos: " + e.message);
-    }
+    // Create Report Overlay
+    const modal = document.createElement('div');
+    modal.id = 'reportOverlay';
+    modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; overflow-y:auto; padding:1.5rem; display:flex; justify-content:center;";
+    
+    modal.innerHTML = `
+        <div class="card glass report-paper" style="max-width:900px; width:100%; height:fit-content; background:white; color:black; padding:2rem !important; border-radius:0;">
+            <div class="flex-between mb-1">
+                <div style="text-align:left;">
+                    <h1 style="margin:0; font-family:'Outfit'; color:var(--primary); font-size:2.2rem; letter-spacing:-1px;">VYJ CAPITAL</h1>
+                    <p style="margin:0; color:#64748b; font-weight:600; font-size:0.9rem;">Gestión de Préstamos e Inversiones</p>
+                </div>
+                <div class="no-print" style="display:flex; gap:0.5rem;">
+                    <button onclick="window.print()" class="btn btn-primary" style="padding:0.5rem 1rem;">🖨️ Imprimir</button>
+                    <button onclick="this.parentElement.parentElement.parentElement.parentElement.remove()" class="btn btn-secondary" style="padding:0.5rem 1rem;">Cerrar ✕</button>
+                </div>
+            </div>
+            
+            <hr style="border:0; border-top:1px solid #000; margin:1.5rem 0;">
+
+            <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; margin-bottom:1.5rem; font-size:0.95rem;">
+                <div>
+                    <p style="margin:0.25rem 0;"><strong>CLIENTE:</strong> ${loan.nombre_cliente}</p>
+                    <p style="margin:0.25rem 0;"><strong>CAPITAL UNIFICADO:</strong> ${formatCurrency(loan.monto_principal)}</p>
+                </div>
+                <div style="text-align:right;">
+                    <p style="margin:0.25rem 0;"><strong>FECHA:</strong> ${new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                    <p style="margin:0.25rem 0;"><strong>TASA:</strong> ${loan.tasa_mensual * 100}% Mensual</p>
+                </div>
+            </div>
+
+            <table class="report-table" style="width:100%; border-collapse: collapse; margin: 1rem 0; font-size:0.8rem;">
+                <thead style="background:var(--primary); color:white; text-align:left;">
+                    <tr>
+                        <th style="padding:0.6rem;">FECHA</th>
+                        <th style="padding:0.6rem;">DESCRIPCIÓN</th>
+                        <th style="padding:0.6rem; text-align:right;">CARGOS (+)</th>
+                        <th style="padding:0.6rem; text-align:right;">PAGOS (-)</th>
+                        <th style="padding:0.6rem; text-align:right;">BAL. RÉDITOS</th>
+                        <th style="padding:0.6rem; text-align:right;">BAL. CAPITAL</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr style="background: #f1f5f9; font-weight: bold;">
+                        <td>INICIO</td>
+                        <td>Capital Inicial Unificado</td>
+                        <td style="text-align:right;">-</td>
+                        <td style="text-align:right;">-</td>
+                        <td style="text-align:right;">$0.00</td>
+                        <td style="text-align:right;">${formatCurrency(loan.monto_principal)}</td>
+                    </tr>
+                    ${(() => {
+                        let currentCap = loan.monto_principal;
+                        let currentInt = 0;
+                        let rows = [];
+
+                        // Definir qué es cargo y qué es pago
+                        const paymentTypes = ['inteligente', 'solo_interes', 'abono_capital', 'pago_mixto', 'pago_fijo'];
+                        const chargeTypes = ['cargo_historico', 'cargo_interes', 'cargo_mora'];
+
+                        txs.forEach(t => {
+                            // Ignorar si es un cargo que solo repite el capital inicial
+                            if (t.monto_total === loan.monto_principal && t.tipo_pago === 'cargo_historico' && (t.nota || '').includes('INICIAL')) return;
+                            
+                            const date = t.fecha ? (t.fecha.toDate ? t.fecha.toDate() : new Date(t.fecha)) : new Date();
+                            const formattedDate = date.toLocaleDateString('es-DO', { day: '2-digit', month: 'short', year: 'numeric' });
+                            
+                            let cargo = 0;
+                            let pago = 0;
+                            let detalle = t.nota || t.tipo_pago;
+
+                            if (chargeTypes.includes(t.tipo_pago)) {
+                                cargo = t.monto_total;
+                                currentInt += cargo;
+                            } else if (paymentTypes.includes(t.tipo_pago)) {
+                                pago = t.monto_total;
+                                // Aplicar pago: Primero a intereses/mora, luego a capital
+                                if (pago <= currentInt) {
+                                    currentInt -= pago;
+                                } else {
+                                    let sobrante = pago - currentInt;
+                                    currentInt = 0;
+                                    currentCap -= sobrante;
+                                }
+                            }
+
+                            rows.push(`
+                                <tr style="border-bottom: 1px solid #eee;">
+                                    <td style="padding:0.5rem;">${formattedDate}</td>
+                                    <td style="padding:0.5rem; color:#444;">${detalle}</td>
+                                    <td style="padding:0.5rem; text-align:right; color:${cargo > 0 ? '#dc2626' : '#999'};">
+                                        ${cargo > 0 ? formatCurrency(cargo) : '-'}
+                                    </td>
+                                    <td style="padding:0.5rem; text-align:right; color:#059669; font-weight:bold;">
+                                        ${pago > 0 ? formatCurrency(pago) : '-'}
+                                    </td>
+                                    <td style="padding:0.5rem; text-align:right; font-weight:600; color:${currentInt > 0 ? '#000' : '#94a3b8'};">
+                                        ${formatCurrency(currentInt)}
+                                    </td>
+                                    <td style="padding:0.5rem; text-align:right; font-weight:bold;">
+                                        ${formatCurrency(currentCap)}
+                                    </td>
+                                </tr>
+                            `);
+                        });
+                        return rows.join('');
+                    })()}
+                </tbody>
+            </table>
+
+            <div style="margin-top:2rem; display:grid; grid-template-columns: 1fr 1fr; gap:2rem;">
+                <div style="border: 2px solid #e2e8f0; padding:1.5rem; border-radius:12px; background: #f8fafc;">
+                    <h4 style="margin:0 0 1.25rem 0; font-size:0.9rem; color:#1e293b; text-transform:uppercase; border-bottom:1px solid #e2e8f0; padding-bottom:0.5rem; font-weight:800;">RESUMEN DE SALDOS</h4>
+                    <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1rem; color:#475569;">
+                        <span>Capital Pendiente:</span> 
+                        <strong style="color:#000;">${formatCurrency(loan.capital_actual)}</strong>
+                    </p>
+                    <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1rem; color:#475569;">
+                        <span>Réditos Pendientes:</span> 
+                        <strong style="color:#000;">${formatCurrency(loan.interes_pendiente + (loan.mora_acumulada || 0))}</strong>
+                    </p>
+                    <hr style="border:0; border-top:2px solid #e2e8f0; margin:1rem 0;">
+                    <p style="display:flex; justify-content:space-between; margin:0; font-size:1.25rem; color:var(--primary); font-weight:900;">
+                        <span>TOTAL GENERAL:</span> 
+                        <strong style="color:var(--primary);">${formatCurrency(runningBalance)}</strong>
+                    </p>
+                </div>
+                <div style="text-align:center; padding-top:2rem;">
+                    <div style="width:200px; border-top:1.5px solid #000; margin: 4.5rem auto 0.5rem auto;"></div>
+                    <p style="margin:0; font-weight:800; font-size:0.85rem; color:#000;">Firma Autorizada</p>
+                    <p style="margin:0; font-size:0.75rem; color:#64748b;">VYJ CAPITAL</p>
+                </div>
+            </div>
+
+            <div style="margin-top:3rem; text-align:left; font-size:0.75rem; color:#94a3b8; line-height:1.4;">
+                <p>Nota: Este informe separa los cargos por Réditos (intereses y moras) de los movimientos de Capital para mayor transparencia.</p>
+                <div style="font-size: 0.55rem; opacity: 0.4; line-height: 1; margin-top: 10px;">
+                    <p style="margin:2px 0;">* Se aplicará un cargo de mora del 5% sobre los réditos adeudados si las cuotas tienen más de 12 días de atraso.</p>
+                    <p style="margin:2px 0;">* Penalidad adicional calculada en base al 12% sobre saldos en atraso prolongado.</p>
+                </div>
+                <p style="margin-top: 10px;">Generado digitalmente por el sistema VYJ Capital - ${new Date().toLocaleString()}</p>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
 };
 
