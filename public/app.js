@@ -1434,7 +1434,7 @@ window.generarReporteEstado = async function(loanId) {
                             }
 
                             rows.push(`
-                                <tr style="border-bottom: 1px solid #eee;">
+                                <tr style="border-bottom: 1px solid #eee; ${pago > 0 ? 'background: #f0fdf4;' : ''}">
                                     <td style="padding:0.5rem;">${formattedDate}</td>
                                     <td style="padding:0.5rem; color:#444;">${detalle}</td>
                                     <td style="padding:0.5rem; text-align:right; color:${cargo > 0 ? '#dc2626' : '#999'};">
