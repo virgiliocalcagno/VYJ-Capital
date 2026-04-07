@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VYJ Capital | Consulta de Estado</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #f8fafc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 1rem;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-card {
+            max-width: 500px;
+            width: 100%;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .login-box {
+            text-align: center;
+            padding: 2.5rem 1.5rem;
+        }
+
+        .logo-text {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.75rem;
+            color: var(--primary);
+            margin-bottom: 0.25rem;
+            letter-spacing: -0.02em;
+        }
+
+        .result-box {
+            display: none;
+            padding: 1.5rem;
+        }
+
+        .balance-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #edf2f7;
+        }
+
+        .balance-label {
+            color: #64748b;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .balance-value {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 0.95rem;
+        }
+
+        .total-box {
+            background: linear-gradient(135deg, var(--primary) 0%, #1e40af 100%);
+            padding: 1.5rem;
+            border-radius: 16px;
+            margin-top: 1.5rem;
+            text-align: center;
+            color: #ffffff !important;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .total-box * {
+            color: #ffffff !important;
+        }
+
+        .loan-card {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            transition: transform 0.2s;
+        }
+
+        .loan-card:hover {
+            transform: scale(1.01);
+        }
+
+        .input-h-lg {
+            height: 52px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            padding: 0 1rem;
+            font-size: 1rem;
+            transition: border-color 0.2s;
+        }
+
+        .input-h-lg:focus {
+            border-color: var(--primary);
+            outline: none;
+        }
+
+        .footer-text {
+            margin-top: 2rem;
+            text-align: center;
+            font-size: 0.75rem;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card status-card glass">
+        <!-- Auth Section -->
+        <div class="login-box" id="authSection">
+            <div class="logo-text">VYJ CAPITAL</div>
+            <p style="color: #64748b; margin-bottom: 2.5rem; font-size: 0.95rem; font-weight: 500;">Portal de Consulta de Cliente</p>
+
+            <div style="text-align: left; margin-bottom: 1.5rem;">
+                <label style="display:block; margin-bottom: 0.6rem; font-weight: 600; font-size: 0.85rem; color: #475569;">Documento de Identidad</label>
+                <input type="text" id="clientIdInput" placeholder="Ingrese Cédula o Pasaporte" class="input-h-lg"
+                    style="width: 100%;" required>
+            </div>
+
+            <button class="btn btn-primary w-full" style="height: 52px; font-weight: 700; font-size: 1rem;" onclick="consultarEstado()">VER MI ESTADO</button>
+            <p id="authError" style="color: var(--danger); margin-top: 1.25rem; font-size: 0.85rem; font-weight: 600; display: none;">⚠️ Documento no registrado o incorrecto.</p>
+            
+            <div style="margin-top: 2rem; border-top: 1px solid #f1f5f9; padding-top: 1rem;">
+                <p style="font-size: 0.75rem; color: #64748b;">Para soporte técnico, contacte a su oficial de crédito.</p>
+            </div>
+        </div>
+
+        <!-- Result Section -->
+        <div class="result-box" id="resultSection">
+            <div class="flex-between"
+                style="border-bottom: 2px solid var(--primary); padding-bottom: 1.25rem; margin-bottom: 1.5rem; align-items: flex-start;">
+                <div>
+                    <h3 id="resClientName" style="margin: 0; color: var(--primary); font-family: 'Outfit'; font-size: 1.3rem;">...</h3>
+                    <small id="resClientId" style="color: #64748b; font-weight: 600;">ID: ...</small>
+                </div>
+                <button class="btn btn-secondary" style="padding: 0.5rem 0.75rem; font-size: 0.75rem; border-radius: 8px;"
+                    onclick="location.reload()">Cerrar sesión</button>
+            </div>
+
+            <div id="loansList">
+                <!-- Dynamic Content -->
+            </div>
+
+            <div class="total-box">
+                <small style="color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 0.1em; font-weight: 700; font-size: 0.7rem;">Balance Total al Día</small>
+                <div id="totalToPay" style="font-size: 2rem; font-weight: 800; margin-top: 0.25rem;">$0.00</div>
+            </div>
+
+            <div class="footer-text">
+                VYJ Capital &copy; 2026. Todos los derechos reservados.<br>
+                Información financiera confidencial.
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="/__/firebase/10.7.1/firebase-app-compat.js"></script>
+    <script src="/__/firebase/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="/__/firebase/init.js"></script>
+
+    <script>
+        const db = firebase.firestore();
+
+        // Auto-check if ID is in URL
+        window.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const id = params.get('id');
+            if (id) {
+                document.getElementById('clientIdInput').value = id;
+                consultarEstado();
+            }
+        });
+
+        async function consultarEstado() {
+            const idInput = document.getElementById('clientIdInput').value.trim();
+            if (!idInput) return;
+
+            const btn = document.querySelector('button');
+            const originalText = btn.innerText;
+            btn.disabled = true;
+            btn.innerText = "VERIFICANDO...";
+            document.getElementById('authError').style.display = 'none';
+
+            try {
+                // Find client by ID (cedula)
+                const clientSnap = await db.collection('clientes').where('cedula', '==', idInput).get();
+
+                if (clientSnap.empty) {
+                    throw new Error("No encontrado");
+                }
+
+                const clientData = clientSnap.docs[0].data();
+                const clientId = clientSnap.docs[0].id;
+
+                // Find Loans for this client
+                const loansSnap = await db.collection('prestamos')
+                    .where('cliente_id', '==', clientId)
+                    .where('estado', 'in', ['ACTIVO', 'MORA'])
+                    .get();
+
+                if (loansSnap.empty) {
+                    alert("No tiene préstamos activos actualmente.");
+                    location.reload();
+                    return;
+                }
+
+                mostrarResultados(clientData, loansSnap);
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('authError').style.display = 'block';
+                btn.disabled = false;
+                btn.innerText = originalText;
+            }
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(amount);
+        }
+
+        function mostrarResultados(client, loansSnap) {
+            document.getElementById('authSection').style.display = 'none';
+            document.getElementById('resultSection').style.display = 'block';
+
+            document.getElementById('resClientName').innerText = client.nombre;
+            document.getElementById('resClientId').innerText = `ID: ${client.cedula}`;
+
+            let total = 0;
+            const container = document.getElementById('loansList');
+            container.innerHTML = '';
+
+            loansSnap.forEach(doc => {
+                const loan = doc.data();
+                
+                // --- Cálculo de Réditos del period actual ---
+                let reditosPeriodo = 0;
+                const tasa = loan.tasa_mensual || 0;
+                const capital = loan.capital_actual || 0;
+                const tipoBalance = loan.tipo_balance || 'proporcional';
+                
+                if (tipoBalance === 'cuota_completa') {
+                    reditosPeriodo = capital * tasa;
+                } else {
+                    // Proporcional: (Capital * Tasa / 30) * Días
+                    const hoy = new Date();
+                    let fechaInicio;
+                    if (loan.ultimo_pago) {
+                        fechaInicio = loan.ultimo_pago.toDate();
+                    } else {
+                        // Estimación basada en próximo pago
+                        const proximo = loan.proximo_pago.toDate();
+                        fechaInicio = new Date(proximo);
+                        if (loan.frecuencia_pago === 'quincenal') fechaInicio.setDate(proximo.getDate() - 15);
+                        else if (loan.frecuencia_pago === 'semanal') fechaInicio.setDate(proximo.getDate() - 7);
+                        else fechaInicio.setMonth(proximo.getMonth() - 1);
+                    }
+                    const diffDays = Math.max(0, Math.ceil((hoy - fechaInicio) / (1000 * 60 * 60 * 24)));
+                    reditosPeriodo = (capital * tasa / 30) * Math.min(diffDays, 30);
+                }
+
+                const reditosTotales = (loan.interes_pendiente || 0) + reditosPeriodo;
+                const loanTotal = capital + reditosTotales + (loan.mora_acumulada || 0);
+                total += loanTotal;
+
+                const loanEl = document.createElement('div');
+                loanEl.className = 'loan-card';
+                loanEl.innerHTML = `
+                    <div class="flex-between" style="margin-bottom: 1.25rem; align-items: center;">
+                        <span style="font-weight: 800; color: #1e293b; font-family: 'Outfit'; font-size: 1.1rem;">Préstamo #${doc.id.substr(0, 5).toUpperCase()}</span>
+                        <span class="status-badge ${loan.estado === 'MORA' ? 'status-overdue' : 'status-active'}" 
+                              style="font-size: 0.7rem; padding: 0.35rem 0.75rem;">
+                            ${tipoBalance === 'proporcional' ? 'AL DÍA (PROP.)' : 'AL VENCIMIENTO'}
+                        </span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">Capital Pendiente</span>
+                        <span class="balance-value">${formatCurrency(capital)}</span>
+                    </div>
+                    <div class="balance-item">
+                        <span class="balance-label">Réditos (${tipoBalance === 'proporcional' ? 'al día' : 'cuota'})</span>
+                        <span class="balance-value text-primary" style="color: var(--primary) !important;">${formatCurrency(reditosTotales)}</span>
+                    </div>
+                    <div class="balance-item" style="border: none;">
+                        <span class="balance-label">Mora Acumulada</span>
+                        <span class="balance-value text-danger">${formatCurrency(loan.mora_acumulada || 0)}</span>
+                    </div>
+                    <div style="margin-top: 1rem; text-align: center; border-top: 1px dashed #e2e8f0; padding-top: 0.75rem;">
+                        <small style="color: #64748b; font-weight: 600; font-size: 0.75rem;">
+                            Siguiente Vencimiento: <span style="color: #1e293b;">${loan.proximo_pago ? new Date(loan.proximo_pago.seconds * 1000).toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}</span>
+                        </small>
+                    </div>
+                `;
+                container.appendChild(loanEl);
+            });
+
+            document.getElementById('totalToPay').innerText = formatCurrency(total);
+        }
+    </script>
+</body>
+
+</html>

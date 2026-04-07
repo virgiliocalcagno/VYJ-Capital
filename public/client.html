@@ -232,7 +232,7 @@
                             style="width:100%; padding:0.75rem; border-radius:12px;" placeholder="0.00">
                     </div>
                     <div>
-                        <label>Tasa de Interés (%)</label>
+                        <label>Tasa de Réditos (%)</label>
                         <div style="display:flex;">
                             <input type="number" id="initLoanRate"
                                 style="width:60%; padding:0.75rem; border:1px solid var(--border); border-radius:12px 0 0 12px;">
@@ -247,7 +247,7 @@
                         <label>Tipo de Amortización</label>
                         <select id="initLoanAmortization" class="btn-secondary"
                             style="width:100%; padding:0.75rem; border-radius:12px;">
-                            <option value="REDITO_PURO">Rédito Puro (Solo Interés)</option>
+                            <option value="REDITO_PURO">Rédito Puro (Solo Réditos)</option>
                             <option value="ABONO_CAPITAL">Cuota Fija (Abono Capital)</option>
                         </select>
                     </div>
@@ -461,7 +461,7 @@
                             style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;">
                     </div>
                     <div>
-                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tasa de Interés (%)</label>
+                        <label style="display:block; margin-bottom:0.5rem; font-weight:500;">Tasa de Réditos (%)</label>
                         <div style="display:flex;">
                             <input type="number" step="0.01" id="loanRate"
                                 style="width:60%; padding:0.5rem; border:1px solid #ccc; border-top-left-radius:4px; border-bottom-left-radius:4px;">
@@ -479,8 +479,8 @@
                     <select id="loanAmortization" class="form-control"
                         style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:4px;"
                         onchange="toggleAmortizationFields(this.value)">
-                        <option value="REDITO_PURO">Rédito Puro (Solo Interés, Capital al Final)</option>
-                        <option value="INTERES_SOBRE_SALDO">Interés s/ Saldo Insoluto (Abonos Capital Permitidos)
+                        <option value="REDITO_PURO">Rédito Puro (Solo Réditos, Capital al Final)</option>
+                        <option value="INTERES_SOBRE_SALDO">Réditos s/ Saldo Insoluto (Abonos Capital Permitidos)
                         </option>
                         <option value="ABONO_CAPITAL">Cuota Fija (Amortización Clásica)</option>
                     </select>
@@ -529,7 +529,7 @@
             <form id="paymentForm">
                 <div class="payment-summary-box mb-2">
                     <div class="flex-between mb-1">
-                        <span class="text-muted">Interés Pendiente:</span>
+                        <span class="text-muted">Réditos Pendientes:</span>
                         <strong id="displayInterestPending" class="text-main">$0.00</strong>
                     </div>
                     <div class="flex-between mb-1">
@@ -550,8 +550,8 @@
                 <div class="mb-1">
                     <label>Tipo de Aplicación</label>
                     <select id="paymentType">
-                        <option value="inteligente">Automático (Mora -> Interés -> Capital)</option>
-                        <option value="solo_interes">Solo Interés (Amortizar Deuda)</option>
+                        <option value="inteligente">Automático (Mora -> Réditos -> Capital)</option>
+                        <option value="solo_interes">Solo Réditos (Amortizar Deuda)</option>
                         <option value="abono_capital_directo">Abono Extraordinario a Capital</option>
                     </select>
                 </div>
@@ -569,6 +569,69 @@
                     Procesar Pago & Generar Recibo
                 </button>
             </form>
+        </div>
+    </div>
+
+    <!-- MODAL: Configuración del Préstamo -->
+    <div id="loanConfigModal" class="modal">
+        <div class="card" style="max-width: 450px;">
+            <div class="flex-between mb-2">
+                <h2 class="m-0">⚙️ Configuración</h2>
+                <button onclick="document.getElementById('loanConfigModal').style.display='none'"
+                    class="btn-close">&times;</button>
+            </div>
+
+            <div class="mb-2" style="background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+                <p style="margin-bottom: 0.5rem;"><small class="text-muted">Contacto del Cliente</small></p>
+                <div id="configContactInfo" style="font-size: 0.9rem; font-weight: 600; color: #1e293b;">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <div class="mb-2">
+                <label class="flex-between"
+                    style="cursor: pointer; background: #fff; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <span style="font-weight: 600;">Aplicar Moras Automáticas</span>
+                    <input type="checkbox" id="configApplyMora" style="width: 22px; height: 22px;">
+                </label>
+                <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.4rem; line-height: 1.4;">Si se desactiva, el
+                    sistema no sumará nuevos cargos por mora a este préstamo, ideal para arreglos especiales de pago.</p>
+            </div>
+
+            <div class="mb-2">
+                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600;">Cálculo para Balance Total</label>
+                <select id="configLoanBalanceType" 
+                    style="width: 100%; height: 48px; padding: 0 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px; font-family: 'Outfit'; font-weight: 600;">
+                    <option value="proporcional">Al día (Días transcurridos)</option>
+                    <option value="cuota_completa">Próximo Vencimiento (Cuota completa)</option>
+                </select>
+                <p class="text-muted" style="font-size: 0.75rem; margin-top: 0.4rem; line-height: 1.4;">
+                    Determina si el portal del cliente muestra el interés exacto acumulado a la fecha o la cuota completa del próximo pago.
+                </p>
+            </div>
+
+            <div class="mb-2">
+                <label style="display:block; margin-bottom: 0.5rem; font-weight: 600;">Link de Consulta para Cliente</label>
+                <div class="flex-between gap-1">
+                    <input type="text" id="configPublicLink" readonly
+                        style="flex-grow: 1; padding: 0.6rem; background: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; color: #475569;">
+                    <button class="btn btn-secondary" onclick="copyConfigLink()"
+                        style="padding: 0.6rem; border-radius: 8px;">📋</button>
+                </div>
+            </div>
+
+            <div class="grid-2 gap-1 mt-2">
+                <button class="btn btn-secondary"
+                    onclick="document.getElementById('loanConfigModal').style.display='none'">Cancelar</button>
+                <button class="btn btn-primary" id="saveLoanConfigBtn">💾 Guardar Cambios</button>
+            </div>
+
+            <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #f1f5f9;">
+
+            <button class="btn w-full h-lg" id="sendWhatsAppConfigBtn"
+                style="background: #25D366; color: white; border: none; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 0.75rem; border-radius: 12px; cursor: pointer;">
+                <span style="font-size: 1.4rem;">📱</span> Enviar Estado por WhatsApp
+            </button>
         </div>
     </div>
 

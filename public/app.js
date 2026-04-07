@@ -75,8 +75,111 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pageMode = params.get('mode'); // 'new'
 
     // If on Client Profile Page
-    // If on Client Profile Page
     if (window.location.pathname.includes('client.html')) {
+        // Handle Create/Update Client Submit
+        const createForm = document.getElementById('createClientForm');
+        if (createForm) createForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button[type="submit"]');
+            btn.disabled = true;
+            btn.innerText = "Guardando Expediente...";
+
+            try {
+                const newClient = {
+                    // Personal Information
+                    nombre: document.getElementById('regName').value,
+                    cedula: document.getElementById('regId').value,
+                    fecha_nacimiento: document.getElementById('regDob').value || '',
+                    lugar_nacimiento: document.getElementById('regBirthPlace').value || '',
+                    sexo: document.getElementById('regGender').value,
+                    estado_civil: document.getElementById('regCivil').value,
+                    telefono: document.getElementById('regPhone').value,
+                    email: document.getElementById('regEmail').value || '',
+                    direccion: document.getElementById('regAddress').value,
+                    nacionalidad: document.getElementById('regNationality').value || '',
+                    fecha_registro: firebase.firestore.FieldValue.serverTimestamp(),
+
+                    // Work Information
+                    trabajo: {
+                        ocupacion: document.getElementById('regJob').value || '',
+                        empresa: document.getElementById('regCompany').value || '',
+                        sueldo: parseFloat(document.getElementById('regSalary').value) || 0,
+                        telefono: document.getElementById('regWorkPhone').value || ''
+                    },
+
+                    // Solidario / References
+                    solidario: {
+                        nombre: document.getElementById('regSolidarioName')?.value || '',
+                        cedula: document.getElementById('regSolidarioId')?.value || '',
+                        telefono: document.getElementById('regSolidarioPhone')?.value || '',
+                        referencia_laboral: document.getElementById('regSolidarioJob')?.value || ''
+                    },
+                    referencias: [
+                        { nombre: document.getElementById('ref1Name').value || '', telefono: document.getElementById('ref1Phone').value || '' },
+                        { nombre: document.getElementById('ref2Name').value || '', telefono: document.getElementById('ref2Phone').value || '' }
+                    ],
+                    // Warranty Information
+                    garantia: {
+                        tipo: document.getElementById('regGuaranteeType').value,
+                        valor_estimado: parseFloat(document.getElementById('regGuaranteeValue').value) || 0,
+                        descripcion: document.getElementById('regGuaranteeDesc').value || ''
+                    }
+                };
+
+                if (clientId) {
+                    // UPDATE Existing
+                    await db.collection('clientes').doc(clientId).update(newClient);
+                    alert("✅ Expediente actualizado correctamente");
+                    // Volver a cargar el perfil para ver cambios
+                    window.location.href = `client.html?id=${clientId}`;
+                } else {
+                    // CREATE New
+                    const docRef = await db.collection('clientes').add(newClient);
+                    const newId = docRef.id;
+
+                    // --- Initial Loan Logic (Only for NEW clients) ---
+                    if (document.getElementById('enableInitialLoan') && document.getElementById('enableInitialLoan').checked) {
+                        const amount = parseFloat(document.getElementById('initLoanAmount').value);
+                        const rate = parseFloat(document.getElementById('initLoanRate').value);
+
+                        if (amount > 0) {
+                            const frequency = document.getElementById('initLoanFrequency').value;
+                            const loanData = {
+                                cliente_id: newId,
+                                nombre_cliente: newClient.nombre,
+                                monto_principal: amount,
+                                tasa_mensual: (document.getElementById('initLoanRatePeriod').value === 'anual') ? (rate / 1200) : (rate / 100),
+                                metodo: document.getElementById('initLoanAmortization').value,
+                                frecuencia_pago: frequency,
+                                plazo_meses: 0,
+                                garantia: {
+                                    tipo: 'Declarado en Registro',
+                                    descripcion: document.getElementById('initLoanGuarantee').value || 'Sin descripción',
+                                    fotos: []
+                                },
+                                fiador_nombre: newClient.solidario.nombre || 'N/A',
+                                fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
+                                estado: 'ACTIVO',
+                                capital_actual: amount,
+                                mora_acumulada: 0,
+                                interes_pendiente: 0,
+                                proximo_pago: calculateNextPaymentDate(frequency)
+                            };
+                            await db.collection('prestamos').add(loanData);
+                        }
+                    }
+
+                    alert("✅ Expediente y Préstamo registrados correctamente");
+                    window.location.href = `client.html?id=${newId}`;
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Error: " + err.message);
+                btn.disabled = false;
+                btn.innerText = "💾 Guardar Expediente";
+            }
+        });
+
         if (clientId) {
             loadClientProfile(clientId);
         } else if (pageMode === 'new') {
@@ -84,112 +187,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('profileHeader').style.display = 'none';
             document.getElementById('loansContainer').style.display = 'none';
             document.getElementById('newClientFormSection').style.display = 'block';
-
-            // Handle Create Client Submit
-            document.getElementById('createClientForm').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const btn = e.target.querySelector('button');
-                btn.disabled = true;
-                btn.innerText = "Guardando Expediente...";
-
-                try {
-                    const newClient = {
-                        // Personal Information
-                        nombre: document.getElementById('regName').value,
-                        cedula: document.getElementById('regId').value,
-                        fecha_nacimiento: document.getElementById('regDob').value || '',
-                        lugar_nacimiento: document.getElementById('regBirthPlace').value || '',
-                        sexo: document.getElementById('regGender').value,
-                        estado_civil: document.getElementById('regCivil').value,
-                        telefono: document.getElementById('regPhone').value,
-                        email: document.getElementById('regEmail').value || '',
-                        direccion: document.getElementById('regAddress').value,
-                        nacionalidad: document.getElementById('regNationality').value || '',
-                        fecha_registro: firebase.firestore.FieldValue.serverTimestamp(),
-
-                        // Work Information
-                        trabajo: {
-                            ocupacion: document.getElementById('regJob').value || '',
-                            empresa: document.getElementById('regCompany').value || '',
-                            sueldo: parseFloat(document.getElementById('regSalary').value) || 0,
-                            telefono: document.getElementById('regWorkPhone').value || ''
-                        },
-
-                        // Solidario / References
-                        solidario: {
-                            nombre: document.getElementById('regSolidarioName')?.value || '',
-                            cedula: document.getElementById('regSolidarioId')?.value || '',
-                            telefono: document.getElementById('regSolidarioPhone')?.value || '',
-                            referencia_laboral: document.getElementById('regSolidarioJob')?.value || ''
-                        },
-                        referencias: [
-                            { nombre: document.getElementById('ref1Name').value || '', telefono: document.getElementById('ref1Phone').value || '' },
-                            { nombre: document.getElementById('ref2Name').value || '', telefono: document.getElementById('ref2Phone').value || '' }
-                        ],
-                        // Warranty Information
-                        garantia: {
-                            tipo: document.getElementById('regGuaranteeType').value,
-                            valor_estimado: parseFloat(document.getElementById('regGuaranteeValue').value) || 0,
-                            descripcion: document.getElementById('regGuaranteeDesc').value || ''
-                        },
-                        folder_virtual: ''
-                    };
-
-                    let docIdToUse;
-                    if (clientId) {
-                        // UPDATE Existing
-                        await db.collection('clientes').doc(clientId).update(newClient);
-                        docIdToUse = clientId;
-                        alert("✅ Expediente actualizado correctamente");
-                    } else {
-                        // CREATE New
-                        const docRef = await db.collection('clientes').add(newClient);
-                        docIdToUse = docRef.id;
-
-                        // --- Initial Loan Logic (Only for NEW clients) ---
-                        if (document.getElementById('enableInitialLoan').checked) {
-                            const amount = parseFloat(document.getElementById('initLoanAmount').value);
-                            const rate = parseFloat(document.getElementById('initLoanRate').value);
-
-                            if (amount > 0) {
-                                const frequency = document.getElementById('initLoanFrequency').value;
-                                const loanData = {
-                                    cliente_id: docRef.id,
-                                    nombre_cliente: newClient.nombre,
-                                    monto_principal: amount,
-                                    tasa_mensual: (document.getElementById('initLoanRatePeriod').value === 'anual') ? (rate / 1200) : (rate / 100),
-                                    metodo: document.getElementById('initLoanAmortization').value,
-                                    frecuencia_pago: frequency,
-                                    plazo_meses: 0, // Default for now
-                                    garantia: {
-                                        tipo: 'Declarado en Registro',
-                                        descripcion: document.getElementById('initLoanGuarantee').value || 'Sin descripción',
-                                        fotos: []
-                                    },
-                                    fiador_nombre: newClient.solidario.nombre || 'N/A',
-                                    fecha_creacion: firebase.firestore.FieldValue.serverTimestamp(),
-                                    estado: 'ACTIVO',
-                                    capital_actual: amount,
-                                    mora_acumulada: 0,
-                                    interes_pendiente: 0,
-                                    proximo_pago: calculateNextPaymentDate(frequency)
-                                };
-                                await db.collection('prestamos').add(loanData);
-                            }
-                        }
-
-                        alert("✅ Expediente y Préstamo (si aplica) registrados correctamente");
-                        window.location.href = `client.html?id=${docIdToUse}`;
-                    }
-                } catch (err) {
-                    console.error(err);
-                    alert("Error: " + err.message);
-                    btn.disabled = false;
-                    btn.innerText = "💾 Guardar Expediente";
-                }
-            });
-
-
         } else {
             alert("No se especificó cliente.");
             window.location.href = 'index.html';
@@ -649,7 +646,7 @@ function renderLoanCard(loanId, loan, container) {
                 <div class="card-value-sm">${formatCurrency(loan.capital_actual)}</div>
             </div>
             <div>
-                <small class="text-muted">Interés Pendiente</small>
+                <small class="text-muted">Réditos Pendientes</small>
                 <div class="card-value-sm">${formatCurrency(loan.interes_pendiente || 0)}</div>
             </div>
             <div class="span-2 border-top-danger">
@@ -668,12 +665,15 @@ function renderLoanCard(loanId, loan, container) {
             </details>
         </div>
 
-        <div class="flex-between" style="gap: 0.75rem;">
-            <button class="btn btn-primary w-full" onclick="openPaymentModal('${loanId}', ${loan.capital_actual}, ${loan.interes_pendiente || 0}, ${loan.mora_acumulada || 0})">
-                💰 Registrar Cobro
+        <div class="flex-between" style="gap: 0.5rem;">
+            <button class="btn btn-primary" style="flex-grow: 2;" onclick="openPaymentModal('${loanId}', ${loan.capital_actual}, ${loan.interes_pendiente || 0}, ${loan.mora_acumulada || 0})">
+                💰 Cobro
             </button>
-            <button class="btn btn-secondary w-full" onclick="generarReporteEstado('${loanId}')">
-                📄 Tabla / Informe
+            <button class="btn btn-secondary" style="flex-grow: 2;" onclick="generarReporteEstado('${loanId}')">
+                📄 Informe
+            </button>
+            <button class="btn btn-secondary" style="padding: 0.6rem 0.9rem; flex-grow: 0.5; background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0;" onclick="openLoanConfig('${loanId}')" title="Configuración de Préstamo">
+                ⚙️
             </button>
         </div>
     </div>
@@ -1316,7 +1316,7 @@ window.generarReporteEstado = async function(loanId) {
             historyHtml += `
                 <tr>
                     <td style="text-transform: uppercase; font-size:0.8rem;">${date.split(' de ')[1] || date}</td>
-                    <td style="font-size:0.8rem;">${tx.nota || 'Interés o Mora'}</td>
+                    <td style="font-size:0.8rem;">${tx.nota || 'Réditos o Mora'}</td>
                     <td>-</td>
                     <td style="color:var(--danger); font-weight:600;">${formatCurrency(tx.monto_total)}</td>
                     <td>-</td>
@@ -1355,20 +1355,41 @@ window.generarReporteEstado = async function(loanId) {
     modal.style = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:2000; overflow-y:auto; padding:1.5rem; display:flex; justify-content:center;";
     
     modal.innerHTML = `
-        <div class="card glass report-paper" style="max-width:900px; width:100%; height:fit-content; background:white; color:black; padding:2rem !important; border-radius:12px;">
-            <div class="flex-between mb-1" style="display:flex; justify-content:space-between; align-items:start;">
+        <div class="card glass report-paper" style="max-width:900px; width:100%; height:fit-content; background:white; color:black; padding:3rem !important; border-radius:20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            <div class="flex-between mb-1" style="display:flex; justify-content:space-between; align-items:start; border-bottom: 4px solid #1e293b; padding-bottom:1.5rem;">
                 <div style="text-align:left;">
-                    <h1 style="margin:0; font-family:'Outfit'; color:#2563eb; font-size:2.2rem; letter-spacing:-1px;">VYJ CAPITAL</h1>
-                    <p style="margin:0; color:#64748b; font-weight:600; font-size:0.9rem;">Gestión de Préstamos e Inversiones</p>
+                    <h1 style="margin:0; font-family:'Outfit'; color:#1e293b; font-size:2.8rem; font-weight:900; letter-spacing:-2px;">VYJ CAPITAL</h1>
+                    <p style="margin:0; color:#475569; font-weight:700; font-size:1rem; text-transform:uppercase; letter-spacing:2px;">Estado de Cuenta Oficial</p>
                 </div>
-                <div class="no-print" style="display:flex; gap:0.5rem; position: sticky; top: 0; background: white; padding: 10px; z-index: 10;">
-                    <button id="btnImprimirReal" class="btn btn-primary" style="padding:0.5rem 1rem; font-weight:800; background:#2563eb; color:white; border:none; border-radius:6px; cursor:pointer;">🖨️ Generar PDF / Imprimir</button>
-                    <button onclick="document.getElementById('reportOverlay').remove()" class="btn btn-secondary" style="padding:0.5rem 1rem; background:#f1f5f9; border:none; border-radius:6px; cursor:pointer;">Cerrar ✕</button>
+                <div class="no-print" style="display:flex; gap:0.75rem;">
+                    <button id="btnCompartirWA" style="background:#22c55e; color:white; border:none; padding:0.75rem 1.25rem; border-radius:10px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:0.5rem; transition:0.2s hover;">
+                        <span style="font-size:1.2rem;">📲</span> WhatsApp
+                    </button>
+                    <button id="btnImprimirReal" style="background:#1e293b; color:white; border:none; padding:0.75rem 1.25rem; border-radius:10px; cursor:pointer; font-weight:bold; display:flex; align-items:center; gap:0.5rem;">
+                        <span style="font-size:1.2rem;">🖨️</span> PDF
+                    </button>
+                    <button onclick="document.getElementById('reportOverlay').remove()" style="background:#f1f5f9; color:#64748b; border:none; padding:0.75rem 1.25rem; border-radius:10px; cursor:pointer; font-weight:bold;">
+                        Cerrar ✕
+                    </button>
                 </div>
             </div>
             
-            <div id="reporteAImprimir">
-                <hr style="border:0; border-top:2px solid #000; margin:1rem 0;">
+            <div id="reporteAImprimir" style="padding: 1rem 0;">
+                <div style="background:#f8fafc; padding:2rem; border-radius:15px; margin: 1.5rem 0; border: 1px solid #e2e8f0;">
+                    <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; font-size:1rem;">
+                        <div>
+                            <p style="margin:0.4rem 0; color:#64748b; font-size:0.8rem; font-weight:bold; text-transform:uppercase;">Información del Cliente</p>
+                            <p style="margin:0.2rem 0; font-size:1.4rem; font-weight:900; color:#1e293b;">${loan.nombre_cliente.toUpperCase()}</p>
+                            <p style="margin:0.4rem 0; font-weight:600;">ID Préstamo: <span style="background:#e2e8f0; padding:2px 8px; border-radius:4px;">#${loan.id.substring(0,8).toUpperCase()}</span></p>
+                        </div>
+                        <div style="text-align:right;">
+                            <p style="margin:0.4rem 0;"><strong>Fecha de Corte:</strong> ${new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                            <p style="margin:0.4rem 0;"><strong>Tasa:</strong> <span style="color:#2563eb; font-weight:bold;">${loan.tasa_mensual * 100}% Mensual</span></p>
+                            <p style="margin:0.4rem 0;"><strong>Estado:</strong> <span style="background:#fef2f2; color:#dc2626; padding:4px 12px; border-radius:20px; font-size:0.8rem; font-weight:bold; border:1px solid #fee2e2;">${loan.estado}</span></p>
+                        </div>
+                    </div>
+                </div>
+
 
                 <div style="display:grid; grid-template-columns: 1.5fr 1fr; gap:2rem; margin-bottom:1.5rem; font-size:0.95rem;">
                     <div>
@@ -1378,12 +1399,12 @@ window.generarReporteEstado = async function(loanId) {
                     </div>
                     <div style="text-align:right;">
                         <p style="margin:0.25rem 0;"><strong>FECHA DE CORTE:</strong> ${new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                        <p style="margin:0.25rem 0;"><strong>TASA DE INTERÉS:</strong> ${loan.tasa_mensual * 100}% Mensual</p>
+                        <p style="margin:0.25rem 0;"><strong>TASA DE RÉDITOS:</strong> ${loan.tasa_mensual * 100}% Mensual</p>
                         <p style="margin:0.25rem 0;"><strong>ESTADO:</strong> <span style="color:#dc2626; font-weight:bold;">${loan.estado}</span></p>
                     </div>
                 </div>
 
-                <table style="width:100%; border-collapse: collapse; margin: 1.5rem 0; font-size:0.85rem; border:1px solid #e2e8f0;">
+                <table class="report-table" style="width:100%; border-collapse: collapse; margin: 1.5rem 0; font-size:0.85rem; border:1px solid #e2e8f0;">
                     <thead>
                         <tr style="background:#1e293b; color:white; text-align:left;">
                             <th style="padding:0.75rem; border:1px solid #1e293b;">FECHA</th>
@@ -1407,7 +1428,7 @@ window.generarReporteEstado = async function(loanId) {
                             let currentCap = loan.monto_principal;
                             let currentInt = 0;
                             let rows = [];
-                            const paymentTypes = ['inteligente', 'solo_interes', 'abono_capital', 'pago_mixto', 'pago_fijo', 'pago_historico'];
+                            const paymentTypes = ['inteligente', 'solo_interes', 'abono_capital', 'pago_mixto', 'pago_fijo', 'pago_historico', 'pago_recibido'];
                             const chargeTypes = ['cargo_historico', 'cargo_interes', 'cargo_mora'];
 
                             txs.forEach(t => {
@@ -1418,7 +1439,7 @@ window.generarReporteEstado = async function(loanId) {
                                 
                                 let cargo = 0;
                                 let pago = 0;
-                                let detalle = t.nota || t.tipo_pago;
+                                let detalle = (t.nota || t.tipo_pago).replace(/interés/gi, 'Rédito');
 
                                 if (chargeTypes.includes(t.tipo_pago)) {
                                     cargo = t.monto_total;
@@ -1458,27 +1479,36 @@ window.generarReporteEstado = async function(loanId) {
                     </tbody>
                 </table>
 
-                <div style="margin-top:2.5rem; display:grid; grid-template-columns: 1fr 1fr; gap:3rem;">
-                    <div style="border: 3px solid #1e293b; padding:1.5rem; border-radius:8px; background: #fff;">
-                        <h4 style="margin:0 0 1rem 0; font-size:1rem; color:#1e293b; text-transform:uppercase; border-bottom:2px solid #1e293b; padding-bottom:0.5rem; font-weight:900;">ESTADO ACTUAL DE CUENTA</h4>
-                        <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1.1rem;">
-                            <span>Capital Balance:</span> 
+                <div style="margin-top:3rem; display:grid; grid-template-columns: 1fr 1fr; gap:4rem;">
+                    <div class="summary-box" style="border: 4px solid #1e293b; background: #fff; padding:2rem; border-radius:12px; color: #1e293b;">
+                        <h4 style="margin:0 0 1.5rem 0; font-size:1.1rem; color:#1e293b; text-transform:uppercase; letter-spacing:1px; font-weight:900; border-bottom: 2px solid #1e293b; padding-bottom: 0.5rem;">CÁLCULO DE LIQUIDACIÓN</h4>
+                        
+                        <div style="display:flex; justify-content:space-between; margin:0.8rem 0; font-size:1.1rem; border-bottom: 1px dashed #cbd5e1; padding-bottom:0.5rem;">
+                            <span style="font-weight:600; color:#475569;">Balance Capital</span> 
                             <strong style="color:#000;">${formatCurrency(loan.capital_actual)}</strong>
-                        </p>
-                        <p style="display:flex; justify-content:space-between; margin:0.75rem 0; font-size:1.1rem;">
-                            <span>Intereses/Moras:</span> 
-                            <strong style="color:#000;">${formatCurrency(loan.interes_pendiente)}</strong>
-                        </p>
-                        <hr style="border:0; border-top:2px solid #1e293b; margin:1rem 0;">
-                        <p style="display:flex; justify-content:space-between; margin:0; font-size:1.4rem; color:#2563eb; font-weight:950;">
-                            <span>TOTAL DEUDA:</span> 
-                            <strong>${formatCurrency(loan.capital_actual + loan.interes_pendiente)}</strong>
-                        </p>
+                        </div>
+                        
+                        <div style="display:flex; justify-content:space-between; margin:0.8rem 0; font-size:1.1rem; border-bottom: 1px dashed #cbd5e1; padding-bottom:0.5rem;">
+                            <span style="font-weight:600; color:#475569;">Réditos Atrasados</span> 
+                            <strong style="color:#dc2626;">${formatCurrency(loan.interes_pendiente)}</strong>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; margin:0.8rem 0; font-size:1.1rem; border-bottom: 2px solid #1e293b; padding-bottom:0.5rem;">
+                            <span style="font-weight:600; color:#475569;">Rédito Próximo (${loan.proximo_pago ? (loan.proximo_pago.toDate ? loan.proximo_pago.toDate() : new Date(loan.proximo_pago)).toLocaleDateString('es-DO', {day:'2-digit', month:'short'}) : 'Abril'})</span> 
+                            <strong style="color:#000;">${formatCurrency(loan.capital_actual * (loan.tasa_mensual || 0))}</strong>
+                        </div>
+
+                        <div style="display:flex; justify-content:space-between; margin-top:1.5rem; align-items: center; background: #f1f5f9; padding: 1rem; border-radius: 8px;">
+                            <span style="font-size:1rem; color:#1e293b; font-weight:900; text-transform:uppercase;">TOTAL PARA ESTAR AL DÍA</span> 
+                            <strong style="font-size:1.8rem; color:#1e293b; font-family:'Outfit'; font-weight:950;">${formatCurrency(loan.capital_actual + loan.interes_pendiente + (loan.capital_actual * (loan.tasa_mensual || 0)))}</strong>
+                        </div>
                     </div>
-                    <div style="text-align:center; display:flex; flex-direction:column; justify-content:flex-end; align-items:center;">
-                        <div style="width:250px; border-top:2px solid #000; margin-bottom:0.5rem;"></div>
-                        <p style="margin:0; font-weight:900; font-size:1rem; color:#000; text-transform:uppercase;">Firma Autorizada</p>
-                        <p style="margin:0; font-size:0.85rem; color:#475569;">VYJ CAPITAL - DPTO. COBROS</p>
+
+                    <div style="text-align:center; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <div style="width:280px; border-top:2px solid #1e293b; margin-bottom:0.75rem; padding-top:0.5rem;"></div>
+                        <p style="margin:0; font-weight:900; font-size:1.1rem; color:#1e293b; text-transform:uppercase; letter-spacing:1px;">Firma Autorizada</p>
+                        <p style="margin:0; font-size:0.9rem; color:#64748b; font-weight:700;">Control de Cobros - VYJ CAPITAL</p>
+                        <p style="margin-top:1.5rem; font-size:10px; color:#94a3b8; font-style:italic;">Documento verificado digitalmente</p>
                     </div>
                 </div>
 
@@ -1492,15 +1522,58 @@ window.generarReporteEstado = async function(loanId) {
 
     document.body.appendChild(modal);
 
+    // Lógica de Compartir WhatsApp
+    document.getElementById('btnCompartirWA').onclick = function() {
+        const totalAlDia = loan.capital_actual + loan.interes_pendiente + (loan.capital_actual * (loan.tasa_mensual || 0));
+        const proxFecha = loan.proximo_pago ? (loan.proximo_pago.toDate ? loan.proximo_pago.toDate() : new Date(loan.proximo_pago)).toLocaleDateString('es-DO', {day:'2-digit', month:'long'}) : '15-Abr';
+        
+        const shareText = `🏦 *VYJ CAPITAL - ESTADO DE CUENTA*\n` +
+                          `---------------------------------------\n` +
+                          `👤 *Cliente:* ${loan.nombre_cliente.toUpperCase()}\n` +
+                          `💰 *Capital Actual:* ${formatCurrency(loan.capital_actual)}\n` +
+                          `📅 *Atrasos (Réditos):* ${formatCurrency(loan.interes_pendiente)}\n` +
+                          `📈 *Interés Próximo:* ${formatCurrency(loan.capital_actual * (loan.tasa_mensual || 0))}\n` +
+                          `---------------------------------------\n` +
+                          `🚀 *TOTAL PARA ESTAR AL DÍA:* ${formatCurrency(totalAlDia)}\n` +
+                          `📅 *Fecha de Corte:* ${proxFecha}\n` +
+                          `---------------------------------------\n` +
+                          `_Documento oficial generado por el sistema de Gestión VyJ Capital._`;
+        
+        window.open(`https://wa.me/?text=${encodeURIComponent(shareText)}`, '_blank');
+    };
+
     // Lógica de Impresión Profesional
     document.getElementById('btnImprimirReal').onclick = function() {
         const contenidoHTML = document.getElementById('reporteAImprimir').innerHTML;
         const printWindow = window.open('', '_blank');
-        printWindow.document.write('<html><head><title>VYJ Capital - Estado de Cuenta</title>');
-        printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">');
-        printWindow.document.write('<style>body{font-family:Inter, sans-serif; padding:40px; color:#000;} h1{color:#2563eb;} table{width:100%; border-collapse:collapse; margin-top:20px;} th, td{border:1px solid #e2e8f0; padding:8px; text-align:left;} @media print{.no-print{display:none;}}</style>');
+        printWindow.document.write('<html><head><title>Estado de Cuenta - ' + loan.nombre_cliente + '</title>');
+        printWindow.document.write('<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&family=Inter:wght@400;700&display=swap" rel="stylesheet">');
+        printWindow.document.write(`
+            <style>
+                body { font-family: 'Inter', sans-serif; padding: 2.5cm; color: #000; background: #fff; line-height: 1.4; }
+                h1, h4 { font-family: 'Outfit', sans-serif; }
+                table { width: 100%; border-collapse: collapse; margin: 1rem 0; page-break-inside: auto; }
+                tr { page-break-inside: avoid; page-break-after: auto; }
+                thead { display: table-header-group; }
+                tfoot { display: table-footer-group; }
+                th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+                
+                /* Evitar cortes feos */
+                .report-paper, table, .summary-box { page-break-inside: avoid !important; break-inside: avoid !important; }
+                
+                @media print {
+                    @page { margin: 0; size: auto; }
+                    body { padding: 1.5cm; }
+                    .no-print { display: none !important; }
+                    #btnImprimirReal { display: none !important; }
+                }
+                
+                /* Estilos de tabla del reporte */
+                th { background-color: #1e293b !important; color: white !important; -webkit-print-color-adjust: exact; }
+                .summary-box { border: 3px solid #1e293b; padding: 1.5rem; border-radius: 8px; margin-top: 1.5rem; }
+            </style>
+        `);
         printWindow.document.write('</head><body>');
-        printWindow.document.write('<div style="text-align:left; margin-bottom:20px;"><h1 style="margin:0;">VYJ CAPITAL</h1><p style="margin:0; font-weight:bold;">Estado de Cuenta Oficial</p></div>');
         printWindow.document.write(contenidoHTML);
         printWindow.document.write('</body></html>');
         printWindow.document.close();
@@ -1516,5 +1589,105 @@ window.generarReporteEstado = async function(loanId) {
 
 // Asignación de alias al final para asegurar carga
 window.generarReporteTabla = window.generarReporteEstado;
-console.log("Sistema de Reportes VYJ Capital v12.2 Cargado.");
+
+/**
+ * ⚙️ Loan Configuration & Client Portal Logic
+ */
+
+// Function to copy link
+window.copyConfigLink = function() {
+    const linkInput = document.getElementById('configPublicLink');
+    if (!linkInput) return;
+    
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999); // For mobile devices
+    
+    try {
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            alert('✅ Link de consulta copiado al portapapeles');
+        }).catch(err => {
+            // Fallback for older browsers
+            document.execCommand('copy');
+            alert('✅ Link copiado');
+        });
+    } catch (e) {
+        alert('Link: ' + linkInput.value);
+    }
+};
+
+// Function to open configuration modal
+window.openLoanConfig = async function(loanId) {
+    console.log("Opening configuration for loan:", loanId);
+    try {
+        const loanDoc = await db.collection('prestamos').doc(loanId).get();
+        if (!loanDoc.exists) throw new Error("Préstamo no encontrado");
+        
+        const loanData = loanDoc.data();
+        const clientDoc = await db.collection('clientes').doc(loanData.cliente_id).get();
+        if (!clientDoc.exists) throw new Error("Cliente no encontrado en la base de datos");
+        
+        const clientData = clientDoc.data();
+
+        const modal = document.getElementById('loanConfigModal');
+        const contactInfo = document.getElementById('configContactInfo');
+        const applyMoraCheckbox = document.getElementById('configApplyMora');
+        const balanceTypeSelect = document.getElementById('configLoanBalanceType');
+        const publicLinkInput = document.getElementById('configPublicLink');
+        const saveBtn = document.getElementById('saveLoanConfigBtn');
+        const whatsappBtn = document.getElementById('sendWhatsAppConfigBtn');
+
+        if (!modal) return;
+
+        // Populate data
+        contactInfo.innerHTML = `
+            <div style="margin-bottom:0.4rem; font-size:1.1rem;">👤 ${clientData.nombre}</div>
+            <div style="margin-bottom:0.4rem;">📞 ${clientData.telefono}</div>
+            <div style="color:#64748b; font-weight:400;">📧 ${clientData.email || 'Sin correo registrado'}</div>
+        `;
+
+        // Load settings
+        applyMoraCheckbox.checked = loanData.mora_editable !== false; 
+        balanceTypeSelect.value = loanData.tipo_balance || 'proporcional';
+
+        // Generate public link
+        const baseUrl = window.location.origin;
+        publicLinkInput.value = `${baseUrl}/status.html?id=${clientData.cedula}`;
+
+        // Setup save button
+        saveBtn.onclick = async () => {
+            saveBtn.disabled = true;
+            saveBtn.innerText = "⏳ Guardando...";
+            try {
+                await db.collection('prestamos').doc(loanId).update({
+                    mora_editable: applyMoraCheckbox.checked,
+                    tipo_balance: balanceTypeSelect.value
+                });
+                alert('✅ Configuración actualizada correctamente.');
+                modal.style.display = 'none';
+            } catch (e) {
+                console.error(e);
+                alert('❌ Error al guardar: ' + e.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerText = "💾 Guardar Cambios";
+            }
+        };
+
+        // Setup WhatsApp button
+        whatsappBtn.onclick = () => {
+            const message = `*VYJ CAPITAL - ESTADO DE CUENTA*\n\nHola *${clientData.nombre}*,\n\nLe enviamos el acceso directo para consultar el estado actualizado de su préstamo en nuestra plataforma.\n\n🔗 *Link de consulta:* ${publicLinkInput.value}\n\nPara acceder, solo necesita ingresar su número de documento (*${clientData.cedula}*).\n\n_Este es un mensaje automático de VYJ Capital._`;
+            const encodedMsg = encodeURIComponent(message);
+            const cleanPhone = clientData.telefono.replace(/\D/g, '');
+            const whatsappUrl = `https://wa.me/${cleanPhone.startsWith('1') ? cleanPhone : '1' + cleanPhone}?text=${encodedMsg}`;
+            window.open(whatsappUrl, '_blank');
+        };
+
+        modal.style.display = 'flex';
+    } catch (e) {
+        console.error("Error opening config:", e);
+        alert("⚠️ Error: " + e.message);
+    }
+};
+
+console.log("Sistema de Gestión de Préstamos y Portal de Clientes Cargado - v12.5");
 
