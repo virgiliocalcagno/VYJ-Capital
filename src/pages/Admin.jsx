@@ -448,8 +448,11 @@ export default function Admin() {
                       <tr key={p.id} onClick={() => navigate(`/pago/${p.id}`)}
                         className="cursor-pointer hover:bg-slate-700/20 transition-all group">
                         <td className="px-6 py-4">
-                          <p className="font-black text-white uppercase text-sm group-hover:text-blue-400 transition-colors">{p.nombre_cliente}</p>
-                          <p className="text-[10px] text-slate-500 font-mono mt-0.5">{p.cedula_cliente || '—'}</p>
+                          <p className="font-black text-white uppercase text-sm group-hover:text-blue-400 transition-colors leading-none mb-1">{p.nombre_cliente}</p>
+                          {p.fiador_nombre && (
+                            <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest mb-1 opacity-70">Fiador: {p.fiador_nombre}</p>
+                          )}
+                          <p className="text-[10px] text-slate-500 font-mono">{p.cedula_cliente || '—'}</p>
                         </td>
                         <td className="px-6 py-4 text-right font-mono font-bold text-slate-200">{fmt(p.capital_actual || p.monto_principal)}</td>
                         <td className="px-6 py-4 text-right font-mono font-bold text-emerald-400">{fmt(reditoMes)}</td>
