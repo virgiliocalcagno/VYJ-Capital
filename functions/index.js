@@ -125,13 +125,14 @@ exports.procesarPago = functions.https.onCall(async (data, context) => {
             ultimo_pago: admin.firestore.FieldValue.serverTimestamp()
         });
 
-        // Registrar Transacción
-        const transRef = db.collection("transacciones").doc();
+        // Registrar Transacción (colección unificada: 'transactions')
+        const transRef = db.collection("transactions").doc();
         t.set(transRef, {
-            prestamo_id: loanId,
+            loan_id: loanId,
+            tipo: 'pago',
             fecha: admin.firestore.FieldValue.serverTimestamp(),
             monto_total: amount,
-            desglose: { mora: moraPaid, interes: interestPaid, capital: capitalPaid },
+            desglose: { mora: moraPaid, reditos: interestPaid, capital: capitalPaid },
             nuevo_saldo: newCapital
         });
 

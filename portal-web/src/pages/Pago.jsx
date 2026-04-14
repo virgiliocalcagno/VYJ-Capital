@@ -1,43 +1,47 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../services/firebase-config';
 import { useOCR } from '../services/useOCR';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CreditCard, Landmark, FileText, Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { 
+  CreditCard, 
+  Upload, 
+  CheckCircle, 
+  AlertCircle, 
+  Loader2, 
+  Landmark, 
+  Calendar, 
+  ShieldCheck, 
+  Smartphone,
+  ChevronLeft,
+  X
+} from 'lucide-react';
 
 const Pago = () => {
     const { idPrestamo } = useParams();
+    const navigate = useNavigate();
     const [loan, setLoan] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [scanData, setScanData] = useState(null);
+    const [showConfirm, setShowConfirm] = useState(false);
     
-    // OCR Logic
     const { scanReceipt, isScanning, scanError } = useOCR();
-    const [receiptData, setReceiptData] = useState(null);
 
     useEffect(() => {
         const fetchLoan = async () => {
-            if (!idPrestamo) return;
-            setLoading(true);
             try {
-                // Buscamos el documento en la colección 'prestamos'
                 const docRef = doc(db, 'prestamos', idPrestamo);
                 const docSnap = await getDoc(docRef);
-
                 if (docSnap.exists()) {
                     setLoan(docSnap.data());
-                } else {
-                    setError("No se encontró el préstamo especificado.");
                 }
             } catch (err) {
-                console.error("Error al cargar préstamo:", err);
-                setError("Error al conectar con la base de datos.");
+                console.error("Error fetching loan:", err);
             } finally {
                 setLoading(false);
             }
         };
-
         fetchLoan();
     }, [idPrestamo]);
 
@@ -47,165 +51,197 @@ const Pago = () => {
 
         const data = await scanReceipt(file);
         if (data) {
-            setReceiptData(data);
+            setScanData(data);
+            setShowConfirm(true);
         }
     };
 
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('es-DO', { style: 'currency', currency: 'DOP' }).format(amount);
-    };
-
-    const formatDate = (timestamp) => {
-        if (!timestamp) return 'N/A';
-        const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp.seconds * 1000);
-        return date.toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' });
-    };
-
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-900">
-            <Loader2 className="w-10 h-10 text-primary-accent animate-spin" />
+        <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+            <Loader2 className="w-12 h-12 text-blue-500 animate-spin" />
         </div>
     );
 
-    if (error) return (
-        <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 p-6 text-white text-center">
+    if (!loan) return (
+        <div className="min-h-screen bg-slate-900 text-white p-8 flex flex-col items-center justify-center text-center">
             <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
-            <h2 className="text-2xl font-bold mb-2">¡Ups! Algo salió mal</h2>
-            <p className="text-slate-400">{error}</p>
-            <button onClick={() => window.location.reload()} className="mt-6 btn btn-secondary">Reintentar</button>
+            <h1 className="text-2xl font-black">Préstamo no encontrado</h1>
+            <p className="text-slate-400 mt-2">Verifica el enlace o contacta con administración.</p>
         </div>
     );
+
+    const totalPendiente = (loan.capital_actual || 0) + (loan.interes_pendiente || 0) + (loan.mora_acumulada || 0);
 
     return (
-        <div className="min-h-screen bg-[#0f172a] text-slate-100 font-sans p-4 md:p-8 flex flex-col items-center selection:bg-primary/30">
-            {/* Header / Brand */}
-            <header className="w-full max-w-md mb-8 text-center">
-                <h1 className="text-3xl font-display font-black tracking-tighter text-white">VYJ CAPITAL</h1>
-                <p className="text-slate-400 text-sm uppercase tracking-widest mt-1">Portal de Clientes</p>
-            </header>
+        <div className="min-h-screen bg-[#0f172a] text-white font-sans selection:bg-blue-500/30 overflow-x-hidden">
+            {/* GRADIENT BLOBS - Glassmorphism Background */}
+            <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
+                <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-blue-600/20 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[100px] rounded-full" />
+            </div>
 
-            <main className="w-full max-w-md space-y-6">
-                {/* Loan Info Card - Glassmorphism */}
+            <main className="max-w-md mx-auto p-5 pt-12">
+                {/* HEADER MODERNO */}
+                <div className="flex items-center justify-between mb-8">
+                    <button onClick={() => navigate(-1)} className="p-3 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/10">
+                        <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <div className="text-right">
+                        <h2 className="text-xs font-black uppercase tracking-[0.3em] text-blue-400">Portal de Pago</h2>
+                        <p className="text-[10px] text-slate-500 font-bold">VYJ CAPITAL S.R.L</p>
+                    </div>
+                </div>
+
+                {/* TARJETA DE SALDO GLASSMORPHISM */}
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="glass rounded-[2rem] p-8 border-white/10 shadow-2xl relative overflow-hidden"
+                    className="relative overflow-hidden bg-white/[0.03] backdrop-blur-2xl border border-white/10 rounded-[2.5rem] p-8 mb-8 shadow-2xl"
                 >
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl -z-10 rounded-full" />
-                    
-                    <div className="flex justify-between items-start mb-6">
-                        <div>
-                            <p className="text-xs text-slate-400 uppercase font-black tracking-widest">Saldo Pendiente</p>
-                            <h2 className="text-4xl font-display font-black mt-2 text-white">
-                                {formatCurrency(loan.capital_actual + (loan.interes_pendiente || 0) + (loan.mora_acumulada || 0))}
-                            </h2>
-                        </div>
-                        <div className={`status-badge text-[10px] ${loan.estado === 'MORA' ? 'bg-rose-500/20 text-rose-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
-                            {loan.estado}
-                        </div>
+                    <div className="absolute top-0 right-0 p-6 opacity-10">
+                        <Smartphone className="w-24 h-24" />
                     </div>
+                    
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2 block">Total Pendiente</span>
+                    <h1 className="text-5xl font-black tracking-tighter mb-6">
+                        RD${new Intl.NumberFormat('en-US').format(totalPendiente)}
+                    </h1>
 
-                    <div className="space-y-4 border-t border-white/5 pt-6">
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Próximo Vencimiento</span>
-                            <span className="font-bold text-white">{formatDate(loan.proximo_pago)}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">Cliente</span>
-                            <span className="text-white">{loan.nombre_cliente}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                            <span className="text-slate-400">ID Préstamo</span>
-                            <span className="text-white font-mono text-[10px]">#{idPrestamo.substring(0,8)}...</span>
-                        </div>
+                    <div className="flex items-center gap-4 text-xs font-bold bg-white/5 p-4 rounded-2xl border border-white/5">
+                        <Calendar className="w-4 h-4 text-amber-500" />
+                        <span className="text-slate-300">Próximo Vencimiento:</span>
+                        <span className="text-white ml-auto">
+                            {loan.proximo_pago?.toDate?.().toLocaleDateString('es-DO', { day: 'numeric', month: 'long' }) || 'No definida'}
+                        </span>
                     </div>
                 </motion.div>
 
-                {/* Payment Actions */}
-                <section className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest px-2">Opciones de Pago</h3>
+                {/* OPCIONES DE PAGO */}
+                <div className="space-y-4 mb-12">
+                    <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-500 ml-2">Métodos Disponibles</h3>
                     
-                    <button className="w-full p-6 rounded-2xl bg-primary hover:bg-primary-dark text-white font-black flex items-center justify-center gap-4 transition-all duration-300 shadow-xl shadow-primary/20 active:scale-95 group">
-                        <CreditCard className="w-6 h-6 group-hover:rotate-12 transition-transform" />
-                        PAGAR CON TARJETA
+                    {/* Botón Pago con Tarjeta */}
+                    <button className="w-full group bg-blue-600 hover:bg-blue-500 text-white p-6 rounded-[2rem] font-black flex items-center justify-between transition-all shadow-xl shadow-blue-900/40 active:scale-95">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-white/20 rounded-xl group-hover:scale-110 transition-transform">
+                                <CreditCard className="w-6 h-6" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-sm">Pagar con Tarjeta</p>
+                                <p className="text-[10px] font-bold text-blue-200 uppercase">Procesamiento inmediato</p>
+                            </div>
+                        </div>
+                        <div className="p-2">
+                           <ShieldCheck className="w-5 h-5 opacity-50" />
+                        </div>
                     </button>
 
-                    <div className="glass rounded-2xl p-6 border-white/5 space-y-4">
-                        <div className="flex items-center gap-3">
+                    {/* Bloque Transferencia */}
+                    <div className="bg-white/[0.03] border border-white/10 rounded-[2rem] p-8">
+                        <div className="flex items-center gap-3 mb-6">
                             <Landmark className="w-5 h-5 text-emerald-400" />
-                            <span className="font-bold">Transferencia Bancaria</span>
-                        </div>
-                        <div className="bg-white/5 rounded-xl p-4 space-y-2 text-sm">
-                            <p className="flex justify-between italic"><span className="text-slate-400">Banco:</span> <span>BANRESERVAS</span></p>
-                            <p className="flex justify-between"><span className="text-slate-400">Cuenta:</span> <span className="font-mono">960-xxxx-001</span></p>
-                            <p className="flex justify-between"><span className="text-slate-400">Beneficiario:</span> <span>VYJ CAPITAL S.R.L</span></p>
+                            <h4 className="text-sm font-black uppercase tracking-widest">Transferencia Bancaria</h4>
                         </div>
                         
-                        {/* OCR Upload Area */}
-                        <div className="mt-4 pt-4 border-t border-white/5">
-                            <p className="text-xs text-slate-400 mb-3 text-center">¿Ya realizaste la transferencia? Sube tu comprobante:</p>
-                            <label className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-xl p-4 cursor-pointer hover:bg-white/5 transition-colors group">
-                                {isScanning ? (
-                                    <div className="flex flex-col items-center gap-2">
-                                        <Loader2 className="w-8 h-8 text-primary-accent animate-spin" />
-                                        <span className="text-xs text-slate-300 font-medium">Analizando recibo con IA...</span>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <Upload className="w-8 h-8 text-slate-500 group-hover:text-primary-accent transition-colors mb-2" />
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-tight">Escanear Recibo</span>
-                                        <input type="file" className="hidden" accept="image/*" onChange={handleFileUpload} />
-                                    </>
-                                )}
+                        <div className="space-y-4">
+                            <div className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Banco Popular</p>
+                                <p className="font-mono text-sm tracking-widest">789-234-123</p>
+                                <p className="text-[9px] text-slate-500 uppercase mt-1 italic italic">VYJ CAPITAL SRL</p>
+                            </div>
+                            
+                            <div className="bg-white/5 p-4 rounded-xl border border-white/5 hover:bg-white/10 transition-colors">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Banreservas</p>
+                                <p className="font-mono text-sm tracking-widest">960-012-334</p>
+                                <p className="text-[9px] text-slate-500 uppercase mt-1 italic">VYJ CAPITAL SRL</p>
+                            </div>
+                        </div>
+
+                        {/* Botón Subir Recibo */}
+                        <div className="mt-8">
+                            <label className="cursor-pointer">
+                                <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+                                <div className={`w-full p-4 rounded-2xl border-2 border-dashed transition-all flex items-center justify-center gap-3 ${isScanning ? 'border-blue-500 bg-blue-500/10' : 'border-white/10 hover:border-blue-500/50 hover:bg-white/5'}`}>
+                                    {isScanning ? (
+                                        <>
+                                            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400 italic">Analizando recibo con IA Gemini...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Upload className="w-5 h-5 text-slate-400" />
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Reportar Transferencia</span>
+                                        </>
+                                    )}
+                                </div>
                             </label>
-                            {scanError && <p className="text-rose-500 text-[10px] mt-2 text-center">{scanError}</p>}
                         </div>
                     </div>
-                </section>
+                </div>
 
-                {/* Confirmation Box (Extracted Data) */}
-                <AnimatePresence>
-                    {receiptData && (
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            className="bg-emerald-500/10 border border-emerald-500/20 p-6 rounded-2xl space-y-4"
-                        >
-                            <div className="flex items-center gap-2 text-emerald-400 mb-2">
-                                <CheckCircle className="w-5 h-5" />
-                                <span className="text-sm font-black uppercase tracking-widest">Recibo Detectado</span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4 text-xs">
-                                <div>
-                                    <p className="text-slate-400 mb-1">Monto Identificado</p>
-                                    <p className="text-lg font-black text-white">{formatCurrency(receiptData.monto_pagado)}</p>
-                                </div>
-                                <div>
-                                    <p className="text-slate-400 mb-1">Fecha</p>
-                                    <p className="text-lg font-black text-white">{receiptData.fecha}</p>
-                                </div>
-                                <div className="col-span-2">
-                                    <p className="text-slate-400 mb-1">Banco de Origen</p>
-                                    <p className="text-white font-bold">{receiptData.banco_origen}</p>
-                                </div>
-                            </div>
-                            
-                            <button className="btn btn-primary w-full" onClick={() => alert("Pago notificado al administrador.")}>
-                                NOTIFICAR MI PAGO
-                            </button>
-                            <button className="w-full text-[10px] text-slate-500 hover:text-slate-300 transition-colors uppercase font-bold tracking-widest pt-2" onClick={() => setReceiptData(null)}>
-                                Volver a escanear
-                            </button>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+                {/* SEGURIDAD */}
+                <div className="text-center opacity-30 flex flex-col items-center gap-2">
+                    <ShieldCheck className="w-8 h-8" />
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em]">Transacción Encriptada 256-bit</p>
+                </div>
             </main>
 
-            <footer className="mt-auto pt-12 text-slate-600 text-[10px] font-bold uppercase tracking-[0.2em]">
-                VYJ Capital &copy; 2026 · Secured by Gemini AI
-            </footer>
+            {/* MODAL DE CONFIRMACIÓN IA (GLASSMORPHISM) */}
+            <AnimatePresence>
+                {showConfirm && scanData && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-6">
+                        <motion.div 
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+                            onClick={() => setShowConfirm(false)}
+                        />
+                        <motion.div 
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="relative w-full max-w-sm bg-[#1e293b] border border-white/20 rounded-[2.5rem] p-10 shadow-[0_0_50px_rgba(37,99,235,0.2)] overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 p-8 opacity-5">
+                                <CheckCircle className="w-40 h-40" />
+                            </div>
+
+                            <div className="flex justify-between items-center mb-8">
+                                <h3 className="text-xl font-black tracking-tight">Recibo detectado</h3>
+                                <button onClick={() => setShowConfirm(false)} className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="space-y-6 relative mb-10">
+                                <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Monto Pagado</p>
+                                    <p className="text-3xl font-black text-emerald-400 font-mono">RD${new Intl.NumberFormat('en-US').format(scanData.monto_pagado)}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Fecha</p>
+                                        <p className="text-xs font-bold text-white">{scanData.fecha}</p>
+                                    </div>
+                                    <div className="bg-white/5 p-5 rounded-2xl border border-white/5">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Banco</p>
+                                        <p className="text-xs font-bold text-white uppercase">{scanData.banco_origen}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white py-5 rounded-2xl font-black text-sm uppercase tracking-widest shadow-lg shadow-emerald-900/20 transition-all active:scale-95" onClick={() => {
+                                alert("Pago notificado a revisión. Recibirás una notificación en cuanto sea validado.");
+                                setShowConfirm(false);
+                            }}>
+                                Confirmar Envío
+                            </button>
+                            <p className="text-center text-[9px] text-slate-500 uppercase font-black tracking-widest mt-6">Validado por Gemini 2.0 Flash AI</p>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
