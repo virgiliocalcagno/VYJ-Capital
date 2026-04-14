@@ -276,10 +276,10 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
       )}
 
       {/* ── SIDEBAR + MAIN ── */}
-      <div className="flex h-[calc(100vh-57px)]">
+      <div className="flex flex-col lg:flex-row lg:h-[calc(100vh-57px)]">
 
         {/* SIDEBAR: Resumen financiero */}
-        <aside className="w-72 border-r border-slate-800 bg-[#0a1221] p-5 space-y-4 overflow-y-auto shrink-0 no-print">
+        <aside className="w-full lg:w-80 border-b lg:border-r border-slate-800 bg-[#0a1221] p-5 space-y-4 lg:overflow-y-auto shrink-0 no-print">
 
           {/* Estado badge */}
           <div className={`px-3 py-1.5 rounded-lg text-center text-[10px] font-black uppercase tracking-wider border ${prestamo.estado === 'MORA' ? 'bg-red-500/10 text-red-400 border-red-500/20' : prestamo.estado === 'SALDADO' ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
@@ -363,8 +363,8 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
 
 
         {/* MAIN CONTENT */}
-        <main className={`flex-1 overflow-y-auto ${publicMode ? 'bg-[#070d1a]' : ''}`}>
-          <div className={publicMode ? "max-w-4xl mx-auto" : ""}>
+        <main className={`flex-1 overflow-y-auto ${publicMode ? 'bg-[#070d1a] border-t lg:border-t-0 border-slate-800 pb-20' : ''}`}>
+          <div className={publicMode ? "max-w-4xl mx-auto p-4 sm:p-8" : ""}>
 
           {/* ══════════════════════════════════════════════════════════════ */}
           {/* FICHA DEL CLIENTE                                             */}
@@ -443,17 +443,21 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
           {/* ESTADO DE CUENTA                                              */}
           {/* ══════════════════════════════════════════════════════════════ */}
           {vista === 'cuenta' && (
-            <div className="p-8 space-y-6">
+            <div className={`${publicMode ? 'p-0' : 'p-4 sm:p-8'} space-y-6`}>
               {/* Encabezado imprimible */}
-              <div className="border border-slate-700 rounded-2xl overflow-hidden">
-                <div className="bg-slate-800/40 px-6 py-4 border-b border-slate-700">
-                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Estado de Cuenta — VYJ Capital</p>
-                  <p className="font-black text-white text-lg uppercase mt-1 leading-none">{prestamo.nombre_cliente}</p>
-                  <p className="text-xs text-slate-400 font-bold mt-1 mb-2">Préstamo #{idPrestamo.slice(0, 10).toUpperCase()}</p>
-                  {(prestamo.fiador_nombre || fichaForm.solidario_nombre) && (
-                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Fiador: {prestamo.fiador_nombre || fichaForm.solidario_nombre}</p>
-                  )}
-                  <p className="text-xs text-slate-500 font-bold mt-1">Fecha de corte: {new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              <div className="border border-slate-700 rounded-3xl overflow-hidden shadow-2xl bg-slate-900/50">
+                <div className="bg-slate-800/40 px-5 sm:px-8 py-5 sm:py-7 border-b border-slate-700">
+                  <p className="text-[10px] sm:text-[11px] font-black uppercase text-slate-500 tracking-widest mb-1">Estado de Cuenta — VYJ Capital</p>
+                  <h2 className="font-black text-white text-xl sm:text-2xl uppercase tracking-tighter leading-none mb-2">{prestamo.nombre_cliente}</h2>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+                    <p className="text-xs sm:text-sm text-slate-400 font-bold">Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
+                    {(prestamo.fiador_nombre || fichaForm.solidario_nombre) && (
+                      <div className="bg-blue-600/20 text-blue-400 text-[10px] sm:text-xs font-black px-3 py-1 rounded-full border border-blue-500/20 uppercase tracking-widest">
+                        Fiador: {prestamo.fiador_nombre || fichaForm.solidario_nombre}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] sm:text-xs text-slate-500 font-bold mt-4 italic opacity-60">Fecha de corte: {new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
 
                 {/* Tabla */}
