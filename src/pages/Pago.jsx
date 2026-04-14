@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../services/firebase-config';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -59,19 +59,30 @@ function generarMensajeWA(prestamo, reditoMes) {
   const reditosAt = Number(prestamo.interes_pendiente) || 0;
   const total = reditoMes + mora + reditosAt;
   const dia = prestamo.dia_pago || '?';
-  const link = `${window.location.origin}/pago/${prestamo.id}`;
-  return `Hola ${prestamo.nombre_cliente?.split(' ')[0] || ''},\n\nLe recordamos que su pago mensual vence el día *${dia}*.\n\n📊 *Estado de Cuenta VYJ Capital:*\n• Rédito del mes: ${fmt(reditoMes)}\n${reditosAt > 0 ? `• Réditos atrasados: ${fmt(reditosAt)}\n` : ''}${mora > 0 ? `• Mora: ${fmt(mora)}\n` : ''}• *Total a pagar: ${fmt(total)}*\n\nVer estado de cuenta: ${link}\n\n_VYJ Capital – Control Financiero_`;
+  const link = `${window.location.origin}/estado/${prestamo.id}`;
+  
+  return `Hola ${prestamo.nombre_cliente},\n\n` +
+    `Le recordamos que su pago mensual vence el día *${dia}*.\n\n` +
+    `📊 *Resumen VYJ Capital:*\n` +
+    `• Rédito del mes: ${fmt(reditoMes)}\n` +
+    `${reditosAt > 0 ? `• Réditos atrasados: ${fmt(reditosAt)}\n` : ''}` +
+    `${mora > 0 ? `• Mora: ${fmt(mora)}\n` : ''}` +
+    `• *Total a pagar: ${fmt(total)}*\n\n` +
+    `${link}\n\n` +
+    `_VYJ Capital – Control Financiero_`;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function Pago() {
+export default function Pago({ publicMode: initialPublicMode = false }) {
   const { idPrestamo } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const publicMode = initialPublicMode || searchParams.get('view') === 'client';
 
   const [prestamo, setPrestamo] = useState(null);
   const [transacciones, setTransacciones] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [vista, setVista] = useState('cuenta'); // 'cuenta' | 'pago' | 'ficha'
+  const [vista, setVista] = useState('cuenta'); // Forzamos 'cuenta' como inicio
 
   // Pago
   const [montoPago, setMontoPago] = useState('');
@@ -119,7 +130,7 @@ export default function Pago() {
   useEffect(() => { fetchData(); }, [idPrestamo]);
 
   function buildFichaFromLoan(p) {
-    return { nombre: p.nombre_cliente || '', cedula: p.cedula_cliente || '', telefono: p.telefono || '', email: '', direccion: p.direccion || '', fecha_nacimiento: p.fecha_nacimiento || '', lugar_nacimiento: '', sexo: '', estado_civil: '', nacionalidad: '', trabajo_ocupacion: '', trabajo_empresa: '', trabajo_sueldo: '', trabajo_telefono: '', solidario_nombre: '', solidario_cedula: '', solidario_telefono: '', solidario_trabajo: '', ref1_nombre: '', ref1_telefono: '', ref2_nombre: '', ref2_telefono: '', garantia_tipo: p.garantia_tipo || '', garantia_valor: p.garantia_valor || '', garantia_descripcion: p.garantia_descripcion || '' };
+    return { nombre: p.nombre_cliente || '', cedula: p.cedula_cliente || '', telefono: p.telefono || '', email: '', direccion: p.direccion || '', fecha_nacimiento: p.fecha_nacimiento || '', lugar_nacimiento: '', sexo: '', estado_civil: '', nacionalidad: '', trabajo_ocupacion: '', trabajo_empresa: '', trabajo_sueldo: '', trabajo_telefono: '', solidario_nombre: '', solidario_cedula: '', solidario_telefono: '', solidario_trabajo: '', ref1_nombre: '', ref1_telefono: '', ref2_nombre: '', ref2_telefono: '', garantia_tipo: p.garantia_tipo || '', garantia_valor: p.garantia_valor || '', garantia_descripcion: p.garantia_descripcion || '', dia_pago: p.dia_pago || '' };
   }
 
   function flattenCliente(c) {
@@ -137,7 +148,12 @@ export default function Pago() {
         const nuevoRef = await addDoc(collection(db, 'clientes'), { ...clienteData, fecha_registro: serverTimestamp() });
         await updateDoc(doc(db, 'prestamos', idPrestamo), { cliente_id: nuevoRef.id });
       }
-      await updateDoc(doc(db, 'prestamos', idPrestamo), { nombre_cliente: f.nombre.toUpperCase(), cedula_cliente: f.cedula });
+      await updateDoc(doc(db, 'prestamos', idPrestamo), { 
+        nombre_cliente: f.nombre.toUpperCase(), 
+        cedula_cliente: f.cedula,
+        telefono: f.telefono || null,
+        dia_pago: parseInt(f.dia_pago) || null
+      });
       setEditandoFicha(false);
       await fetchData();
     } catch (err) { alert('Error: ' + err.message); }
@@ -163,7 +179,7 @@ export default function Pago() {
   };
 
   const copiarLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/pago/${idPrestamo}`);
+    navigator.clipboard.writeText(`${window.location.origin}/estado/${idPrestamo}`);
     setLinkCopiado(true);
     setTimeout(() => setLinkCopiado(false), 2000);
   };
@@ -208,31 +224,52 @@ export default function Pago() {
     <div className="min-h-screen bg-[#070d1a] text-slate-200 font-sans">
 
       {/* ── TOPBAR ── */}
-      <div className="border-b border-slate-800 bg-[#0a1221] px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
-        <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-black uppercase transition-colors">
-          <ChevronLeft size={16} /> Panel
-        </button>
-        <div className="h-5 w-px bg-slate-700" />
-        <div className="flex-1">
-          <p className="font-black text-white text-sm uppercase tracking-tight">{prestamo.nombre_cliente}</p>
-          <p className="text-[10px] text-slate-500 font-bold">{prestamo.cedula_cliente || 'Sin cédula'} · Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
+      {!publicMode && (
+        <div className="border-b border-slate-800 bg-[#0a1221] px-6 py-3 flex items-center gap-4 sticky top-0 z-30">
+          <button onClick={() => navigate(-1)} className="text-slate-400 hover:text-white flex items-center gap-1 text-xs font-black uppercase transition-colors">
+            <ChevronLeft size={16} /> Panel
+          </button>
+          <div className="h-5 w-px bg-slate-700" />
+          <div className="flex-1">
+            <p className="font-black text-white text-sm uppercase tracking-tight">{prestamo.nombre_cliente}</p>
+            <p className="text-[10px] text-slate-500 font-bold">{prestamo.cedula_cliente || 'Sin cédula'} · Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
+          </div>
+          <div className="flex gap-1 bg-slate-800/60 rounded-xl p-1">
+            {!publicMode ? (
+              [
+                { key: 'ficha', label: 'Ficha', icon: <User size={12} /> },
+                { key: 'cuenta', label: 'Estado de Cuenta', icon: <FileText size={12} /> },
+                { key: 'pago', label: 'Cobrar', icon: <DollarSign size={12} /> },
+              ].map(({ key, label, icon }) => (
+                <button key={key} onClick={() => setVista(key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${vista === key ? (key === 'pago' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-white') : 'text-slate-400 hover:text-white'}`}>
+                  {icon} {label}
+                </button>
+              ))
+            ) : (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide bg-slate-600 text-white">
+                <FileText size={12} /> Estado de Cuenta
+              </div>
+            )}
+          </div>
+          <button onClick={() => window.print()} className="text-slate-500 hover:text-white text-[10px] font-black uppercase flex items-center gap-1 no-print transition-colors">
+            <Printer size={13} />
+          </button>
         </div>
-        <div className="flex gap-1 bg-slate-800/60 rounded-xl p-1">
-          {[
-            { key: 'ficha', label: 'Ficha', icon: <User size={12} /> },
-            { key: 'cuenta', label: 'Estado de Cuenta', icon: <FileText size={12} /> },
-            { key: 'pago', label: 'Cobrar', icon: <DollarSign size={12} /> },
-          ].map(({ key, label, icon }) => (
-            <button key={key} onClick={() => setVista(key)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wide transition-all ${vista === key ? (key === 'pago' ? 'bg-blue-600 text-white' : 'bg-slate-600 text-white') : 'text-slate-400 hover:text-white'}`}>
-              {icon} {label}
-            </button>
-          ))}
+      )}
+
+      {/* HEADER PÚBLICO (Solo en publicMode) */}
+      {publicMode && (
+        <div className="border-b border-slate-800 bg-[#0a1221] px-6 py-4 flex items-center justify-between sticky top-0 z-30">
+           <div>
+              <p className="text-[11px] font-black uppercase text-blue-400 tracking-[0.2em]">Estado de Cuenta</p>
+              <p className="text-[10px] text-slate-500 font-bold">VYJ CAPITAL SRL</p>
+           </div>
+           <button onClick={() => window.print()} className="bg-white/5 hover:bg-white/10 p-2.5 rounded-xl transition-all border border-white/5">
+              <Printer size={16} className="text-slate-400" />
+           </button>
         </div>
-        <button onClick={() => window.print()} className="text-slate-500 hover:text-white text-[10px] font-black uppercase flex items-center gap-1 no-print transition-colors">
-          <Printer size={13} />
-        </button>
-      </div>
+      )}
 
       {/* ── SIDEBAR + MAIN ── */}
       <div className="flex h-[calc(100vh-57px)]">
@@ -242,7 +279,7 @@ export default function Pago() {
 
           {/* Estado badge */}
           <div className={`px-3 py-1.5 rounded-lg text-center text-[10px] font-black uppercase tracking-wider border ${prestamo.estado === 'MORA' ? 'bg-red-500/10 text-red-400 border-red-500/20' : prestamo.estado === 'SALDADO' ? 'bg-slate-700 text-slate-400 border-slate-600' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
-            {prestamo.estado || 'ACTIVO'} · Día {prestamo.dia_pago || '—'} de cada mes
+            Estado: {prestamo.estado}
           </div>
 
           {/* ── BLOQUE 1: Para estar al día ── */}
@@ -301,25 +338,29 @@ export default function Pago() {
           </div>
 
           {/* Acciones de notificación */}
-          <div className="space-y-2 border-t border-slate-800 pt-4">
-            <p className="text-[9px] font-black uppercase text-slate-600 tracking-widest mb-3">Notificar Cliente</p>
-            {waUrl ? (
-              <a href={waUrl} target="_blank" rel="noreferrer"
-                className="flex items-center gap-2 w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">
-                <MessageCircle size={14} /> Enviar WhatsApp
-              </a>
-            ) : (
-              <p className="text-[10px] text-slate-600 italic">Sin teléfono registrado</p>
-            )}
-            <button onClick={copiarLink}
-              className="flex items-center gap-2 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">
-              <Copy size={14} /> {linkCopiado ? '¡Link copiado!' : 'Copiar Link Estado'}
-            </button>
-          </div>
+          {!publicMode && (
+            <div className="space-y-2 border-t border-slate-800 pt-4">
+              <p className="text-[9px] font-black uppercase text-slate-600 tracking-widest mb-3">Notificar Cliente</p>
+              {waUrl ? (
+                <a href={waUrl} target="_blank" rel="noreferrer"
+                  className="flex items-center gap-2 w-full bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">
+                  <MessageCircle size={14} /> Enviar WhatsApp
+                </a>
+              ) : (
+                <p className="text-[10px] text-slate-600 italic">Sin teléfono registrado</p>
+              )}
+              <button onClick={copiarLink}
+                className="flex items-center gap-2 w-full bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 px-3 py-2.5 rounded-xl text-[10px] font-black uppercase transition-all">
+                <Copy size={14} /> {linkCopiado ? '¡Link copiado!' : 'Copiar Link Estado'}
+              </button>
+            </div>
+          )}
         </aside>
 
+
         {/* MAIN CONTENT */}
-        <main className="flex-1 overflow-y-auto">
+        <main className={`flex-1 overflow-y-auto ${publicMode ? 'bg-[#070d1a]' : ''}`}>
+          <div className={publicMode ? "max-w-4xl mx-auto" : ""}>
 
           {/* ══════════════════════════════════════════════════════════════ */}
           {/* FICHA DEL CLIENTE                                             */}
@@ -377,12 +418,19 @@ export default function Pago() {
                 </Grid2>
               </FichaBloque>
 
-              <FichaBloque titulo="Garantía" icon={<Shield size={15} />}>
+               <FichaBloque titulo="Garantía" icon={<Shield size={15} />}>
                 <Grid2>
                   <FSelect label="Tipo" campo="garantia_tipo" f={fichaForm} s={set} e={editandoFicha} options={[['', 'Sin garantía'], ['vehiculo', 'Vehículo/Motor'], ['electrodomestico', 'Electrodoméstico'], ['titulo', 'Título/Propiedad'], ['pagare', 'Pagaré Notarial'], ['otro', 'Otro']]} />
                   <F label="Valor Estimado (RD$)" campo="garantia_valor" f={fichaForm} s={set} e={editandoFicha} type="number" display={fichaForm.garantia_valor ? fmt(fichaForm.garantia_valor) : '—'} />
                 </Grid2>
                 <div className="mt-4"><F label="Descripción" campo="garantia_descripcion" f={fichaForm} s={set} e={editandoFicha} full textarea /></div>
+              </FichaBloque>
+
+              <FichaBloque titulo="Configuración del Préstamo" icon={<DollarSign size={15} />}>
+                <Grid2>
+                  <F label="Día de Pago del Mes" campo="dia_pago" f={fichaForm} s={set} e={editandoFicha} type="number" display={fichaForm.dia_pago ? `Día ${fichaForm.dia_pago}` : 'No asignado'} />
+                </Grid2>
+                <p className="text-[9px] text-slate-500 font-bold mt-2 italic px-1">Este día define cuándo aparecerá el cliente en tu Dashboard.</p>
               </FichaBloque>
             </div>
           )}
@@ -567,6 +615,7 @@ export default function Pago() {
               </form>
             </div>
           )}
+          </div>
         </main>
       </div>
     </div>

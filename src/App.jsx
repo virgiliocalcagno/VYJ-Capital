@@ -9,6 +9,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/lista" />} />
         <Route path="/lista" element={<Admin />} />
         <Route path="/pago/:idPrestamo" element={<Pago />} />
+        <Route path="/estado/:idPrestamo" element={<Pago publicMode={true} />} />
       </Routes>
     </BrowserRouter>
   );

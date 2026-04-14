@@ -19,7 +19,10 @@ function proximoVencimiento(diaPago) {
   const hoy = new Date();
   const dia = parseInt(diaPago) || 1;
   let fecha = new Date(hoy.getFullYear(), hoy.getMonth(), dia);
-  if (fecha <= hoy) fecha = new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia);
+  const hoySinHora = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  if (fecha < hoySinHora) {
+    fecha = new Date(hoy.getFullYear(), hoy.getMonth() + 1, dia);
+  }
   return fecha;
 }
 
@@ -31,11 +34,30 @@ function diasHasta(diaPago) {
 }
 
 function urgencyColor(dias) {
-  if (dias < 0) return { bg: 'bg-red-500/10 border-red-500/30', text: 'text-red-400', badge: 'bg-red-500 text-white', label: `VENCIDO (${Math.abs(dias)}d)` };
-  if (dias === 0) return { bg: 'bg-orange-500/10 border-orange-500/30', text: 'text-orange-400', badge: 'bg-orange-500 text-white', label: 'VENCE HOY' };
-  if (dias <= 3) return { bg: 'bg-yellow-500/10 border-yellow-500/30', text: 'text-yellow-400', badge: 'bg-yellow-500 text-black', label: `VENCE EN ${dias}d` };
-  if (dias <= 7) return { bg: 'bg-blue-500/10 border-blue-500/30', text: 'text-blue-400', badge: 'bg-blue-500/20 text-blue-300 border border-blue-500/30', label: `En ${dias} días` };
-  return { bg: 'bg-slate-800/40 border-slate-700/30', text: 'text-slate-400', badge: 'bg-slate-700 text-slate-300', label: `En ${dias} días` };
+  if (dias < 0) return { 
+    label: `VENCIDO (${Math.abs(dias)}d)`, 
+    badge: 'bg-red-600 text-white', 
+    cls: 'border-red-600/50 bg-red-600/10 text-red-500',
+    text: 'text-red-500' 
+  };
+  if (dias < 2) return { 
+    label: 'VENCE HOY', 
+    badge: 'bg-red-500 text-white', 
+    cls: 'border-red-500/50 bg-red-500/5 text-red-500', 
+    text: 'text-red-500' 
+  };
+  if (dias <= 5) return { 
+    label: `VENCE EN ${dias} DÍAS`, 
+    badge: 'bg-yellow-500 text-slate-900', 
+    cls: 'border-yellow-500/50 bg-yellow-500/5 text-yellow-500', 
+    text: 'text-yellow-500' 
+  };
+  return { 
+    label: `VENCE EN ${dias} DÍAS`, 
+    badge: 'bg-emerald-500 text-white', 
+    cls: 'border-emerald-500/50 bg-emerald-500/5 text-emerald-500', 
+    text: 'text-emerald-500' 
+  };
 }
 
 function generarMensajeWA(p) {
@@ -44,9 +66,18 @@ function generarMensajeWA(p) {
   const reditosAt = Number(p.interes_pendiente) || 0;
   const total = redito + mora + reditosAt;
   const dia = p.dia_pago || '?';
-  const link = `${window.location.origin}/pago/${p.id}`;
+  const link = `${window.location.origin}/estado/${p.id}`;
+  
   return encodeURIComponent(
-    `Hola ${p.nombre_cliente?.split(' ')[0] || ''},\n\nLe recordamos que su pago mensual vence el día *${dia}*.\n\n📊 *Resumen VYJ Capital:*\n• Rédito del mes: ${fmt(redito)}\n${reditosAt > 0 ? `• Réditos atrasados: ${fmt(reditosAt)}\n` : ''}${mora > 0 ? `• Mora: ${fmt(mora)}\n` : ''}• *Total a pagar: ${fmt(total)}*\n\nEstado de cuenta: ${link}\n\n_VYJ Capital – Control Financiero_`
+    `Hola ${p.nombre_cliente},\n\n` +
+    `Le recordamos que su pago mensual vence el día *${dia}*.\n\n` +
+    `📊 *Resumen VYJ Capital:*\n` +
+    `• Rédito del mes: ${fmt(redito)}\n` +
+    `${reditosAt > 0 ? `• Réditos atrasados: ${fmt(reditosAt)}\n` : ''}` +
+    `${mora > 0 ? `• Mora: ${fmt(mora)}\n` : ''}` +
+    `• *Total a pagar: ${fmt(total)}*\n\n` +
+    `${link}\n\n` +
+    `_VYJ Capital – Control Financiero_`
   );
 }
 
@@ -143,6 +174,50 @@ export default function Admin() {
       alert('Error al crear préstamo: ' + err.message);
     } finally { setCreating(false); }
   };
+  const migrarDaneisi = async () => {
+    if (!confirm('¿Deseas crear el cliente DANEISI con su historial de pagos?')) return;
+    setLoading(true);
+    try {
+      const loanData = {
+        nombre_cliente: "DANEISI",
+        cedula_cliente: "001-0000000-0",
+        telefono: "+1 (809) 762-4362",
+        monto_principal: 45000,
+        capital_actual: 45000,
+        tasa_mensual: 0.20,
+        interes_pendiente: 13000,
+        mora_acumulada: 0,
+        estado: "ACTIVO",
+        metodo: "REDITO_PURO",
+        dia_pago: 15,
+        fecha_inicio: serverTimestamp(),
+        nota_inicial: "Migración automática de historial de pagos.",
+      };
+
+      const docRef = await addDoc(collection(db, "prestamos"), loanData);
+      const payments = [
+        { fecha: new Date(2025, 11, 19), monto: 9000, nota: "Noviembre Completo (1ra y 2da quincena)." },
+        { fecha: new Date(2026, 0, 5), monto: 5000, nota: "Diciembre Completo (2da quincena) + $500 de abono a Enero." },
+        { fecha: new Date(2026, 2, 6), monto: 18000, nota: "Enero y Febrero Completos (4 quincenas de $4,500)." }
+      ];
+
+      for (const p of payments) {
+        await addDoc(collection(db, "transactions"), {
+          loan_id: docRef.id,
+          tipo: 'pago_interes',
+          monto_total: p.monto,
+          nota: p.nota,
+          fecha: p.fecha,
+          metodo_pago: 'efectivo'
+        });
+      }
+      alert('Cliente Daneisi creado con éxito.');
+      fetchPrestamos();
+    } catch (err) {
+      console.error(err);
+      alert('Error en migración: ' + err.message);
+    } finally { setLoading(false); }
+  };
 
   const handleIdCapture = async (e) => {
     const file = e.target.files[0];
@@ -171,13 +246,13 @@ export default function Admin() {
   const agenda = activos
     .filter(p => p.dia_pago)
     .map(p => ({ ...p, _dias: diasHasta(p.dia_pago) }))
+    .filter(p => p._dias <= 10)
     .sort((a, b) => a._dias - b._dias);
-
-  const cobrosPendientes = agenda.filter(p => p._dias <= 7);
 
   const filtered = prestamos
     .filter(p => p.nombre_cliente?.toLowerCase().includes(searchTerm.toLowerCase()))
-    .sort((a, b) => (Number(a._dias) || 999) - (Number(b._dias) || 999));
+    .map(p => ({ ...p, _dias: p.dia_pago ? diasHasta(p.dia_pago) : 999 }))
+    .sort((a, b) => a._dias - b._dias);
 
   if (loading) return (
     <div className="min-h-screen bg-[#070d1a] flex items-center justify-center">
@@ -206,6 +281,10 @@ export default function Admin() {
               </button>
             ))}
           </div>
+          <button onClick={migrarDaneisi}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all border border-slate-700">
+            <Plus size={14} /> Migrar Daneisi
+          </button>
           <button onClick={() => setShowModal(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wide transition-all">
             <Plus size={14} /> Nuevo Préstamo
@@ -229,93 +308,83 @@ export default function Admin() {
               <KPI icon={<ShieldAlert size={20} className="text-red-400" />} label="Mora Total" value={fmt(totalMora)} sub={`${activos.filter(p => p.estado === 'MORA').length} clientes en mora`} color="red" />
             </div>
 
-            {/* Agenda de Cobros */}
+            {/* Agenda de Cobros Unificada */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-500/20 rounded-lg flex items-center justify-center">
-                    <Calendar size={16} className="text-orange-400" />
+                  <div className="w-8 h-8 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <Calendar size={16} className="text-blue-400" />
                   </div>
                   <div>
-                    <h2 className="font-black text-white text-sm uppercase tracking-wider">Agenda de Cobros</h2>
-                    <p className="text-xs text-slate-500 font-bold">Próximos 7 días + vencidos</p>
+                    <h2 className="font-black text-white text-sm uppercase tracking-wider">Cronograma de Cobros</h2>
+                    <p className="text-xs text-slate-500 font-bold">Todos los clientes por orden de vencimiento</p>
                   </div>
                 </div>
-                {cobrosPendientes.length > 0 && (
-                  <span className="bg-orange-500/20 text-orange-400 border border-orange-500/30 text-[10px] font-black uppercase px-3 py-1 rounded-full">
-                    {cobrosPendientes.length} cobros urgentes
-                  </span>
-                )}
               </div>
-
-              {cobrosPendientes.length === 0 ? (
+              {agenda.length === 0 ? (
                 <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-8 text-center">
                   <CheckCircle size={32} className="text-emerald-500 mx-auto mb-3" />
-                  <p className="font-black text-slate-300 text-sm uppercase">Sin cobros urgentes esta semana</p>
-                  <p className="text-slate-500 text-xs mt-1">Todos los vencimientos están a más de 7 días</p>
+                  <p className="font-black text-slate-300 text-sm uppercase">Sin clientes activos en agenda</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {cobrosPendientes.map(p => {
+                  {agenda.map(p => {
                     const tasa = Number(p.tasa_mensual) < 1 ? Number(p.tasa_mensual) : Number(p.tasa_mensual) / 100;
                     const reditoMes = (Number(p.capital_actual) || 0) * tasa;
                     const reditosAt = Number(p.interes_pendiente) || 0;
                     const mora = Number(p.mora_acumulada) || 0;
                     const totalCobrar = reditoMes + reditosAt + mora;
-                    const urg = urgencyColor(p._dias);
+                    
                     const tel = p.telefono?.replace(/\D/g, '');
                     const waMsg = generarMensajeWA(p);
                     const waUrl = tel ? `https://wa.me/1${tel}?text=${waMsg}` : null;
 
+                    // Lógica de semáforo solicitada:
+                    // Rojo: vence hoy (0) o mañana (1)
+                    // Amarillo: 2 a 5 días
+                    // Verde: 6 a 10 días
+                    const cfg = p._dias < 2 
+                      ? { label: 'VENCE HOY', cls: 'border-red-500/50 bg-red-500/10 text-red-500', badge: 'bg-red-500 text-white' } 
+                      : p._dias <= 5 
+                        ? { label: `VENCE EN ${p._dias} DÍAS`, cls: 'border-yellow-500/50 bg-yellow-500/5 text-yellow-500', badge: 'bg-yellow-500 text-slate-900' }
+                        : { label: `VENCE EN ${p._dias} DÍAS`, cls: 'border-emerald-500/50 bg-emerald-500/5 text-emerald-500', badge: 'bg-emerald-500 text-white' };
+
                     return (
                       <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                        className={`border rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 ${urg.bg}`}>
+                        className={`border rounded-2xl p-5 flex flex-col md:flex-row md:items-center gap-4 transition-all hover:bg-slate-800/20 ${cfg.cls}`}>
 
                         {/* Info cliente */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3 mb-1">
-                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${urg.badge}`}>{urg.label}</span>
-                            <span className="text-[9px] font-bold text-slate-500 uppercase">Día {p.dia_pago} de cada mes</span>
+                            <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${cfg.badge}`}>{cfg.label}</span>
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">Cada día {p.dia_pago}</span>
                           </div>
                           <p className="font-black text-white text-base uppercase tracking-tight">{p.nombre_cliente}</p>
                           {p.telefono && <p className="text-xs text-slate-400 font-bold mt-0.5">{p.telefono}</p>}
                         </div>
 
                         {/* Montos */}
-                        <div className="flex gap-6 shrink-0">
-                          <div>
-                            <p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Rédito del mes</p>
-                            <p className="font-black text-white text-sm font-mono">{fmt(reditoMes)}</p>
-                          </div>
-                          {reditosAt > 0 && (
-                            <div>
-                              <p className="text-[9px] font-black uppercase text-yellow-500 tracking-wider">Atrasados</p>
-                              <p className="font-black text-yellow-400 text-sm font-mono">{fmt(reditosAt)}</p>
-                            </div>
-                          )}
-                          {mora > 0 && (
-                            <div>
-                              <p className="text-[9px] font-black uppercase text-red-400 tracking-wider">Mora</p>
-                              <p className="font-black text-red-400 text-sm font-mono">{fmt(mora)}</p>
-                            </div>
-                          )}
-                          <div className="border-l border-slate-700 pl-6">
-                            <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Total a cobrar</p>
+                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 shrink-0 md:border-l md:border-slate-800 md:pl-6">
+                          <div><p className="text-[9px] font-black uppercase text-slate-500 tracking-wider">Rédito Mes</p><p className="font-black text-white text-sm font-mono">{fmt(reditoMes)}</p></div>
+                          {reditosAt > 0 && (<div><p className="text-[9px] font-black uppercase text-yellow-500 tracking-wider">Atrasados</p><p className="font-black text-yellow-400 text-sm font-mono">{fmt(reditosAt)}</p></div>)}
+                          {mora > 0 && (<div><p className="text-[9px] font-black uppercase text-red-400 tracking-wider">Mora</p><p className="font-black text-red-400 text-sm font-mono">{fmt(mora)}</p></div>)}
+                          <div className={reditosAt > 0 || mora > 0 ? "lg:border-l lg:border-slate-700 lg:pl-6" : ""}>
+                            <p className="text-[9px] font-black uppercase text-blue-400 tracking-wider">Total Hoy</p>
                             <p className="font-black text-xl text-white font-mono">{fmt(totalCobrar)}</p>
                           </div>
                         </div>
 
                         {/* Acciones */}
-                        <div className="flex gap-2 shrink-0">
+                        <div className="flex gap-2 shrink-0 md:border-l md:border-slate-800 md:pl-6">
                           {waUrl && (
                             <a href={waUrl} target="_blank" rel="noreferrer"
-                              className="flex items-center gap-1.5 bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] border border-[#25D366]/30 px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all">
-                              <MessageCircle size={13} /> WhatsApp
+                              className="flex items-center justify-center p-2.5 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] border border-[#25D366]/20 rounded-xl transition-all">
+                              <MessageCircle size={18} />
                             </a>
                           )}
                           <button onClick={() => navigate(`/pago/${p.id}`)}
-                            className="flex items-center gap-1.5 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 border border-blue-500/30 px-3 py-2 rounded-xl text-[10px] font-black uppercase transition-all">
-                            <ExternalLink size={13} /> Ver Cuenta
+                            className="bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest transition-all">
+                            Cobrar
                           </button>
                         </div>
                       </motion.div>
@@ -325,31 +394,6 @@ export default function Admin() {
               )}
             </div>
 
-            {/* Próximos (8-30 días) */}
-            {agenda.filter(p => p._dias > 7).length > 0 && (
-              <div>
-                <h3 className="text-xs font-black uppercase text-slate-500 tracking-widest mb-3 flex items-center gap-2">
-                  <Clock size={12} /> Próximos 30 días
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {agenda.filter(p => p._dias > 7 && p._dias <= 30).map(p => {
-                    const tasa = Number(p.tasa_mensual) < 1 ? Number(p.tasa_mensual) : Number(p.tasa_mensual) / 100;
-                    const reditoMes = (Number(p.capital_actual) || 0) * tasa;
-                    return (
-                      <div key={p.id} onClick={() => navigate(`/pago/${p.id}`)}
-                        className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-4 cursor-pointer hover:border-blue-500/30 transition-all group">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-[9px] font-black uppercase text-slate-500">Día {p.dia_pago} — en {p._dias}d</span>
-                          <ChevronRight size={14} className="text-slate-600 group-hover:text-blue-400 transition-colors" />
-                        </div>
-                        <p className="font-black text-white text-sm uppercase">{p.nombre_cliente}</p>
-                        <p className="font-mono text-emerald-400 font-bold text-sm mt-1">{fmt(reditoMes)}</p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
 
             {/* Resumen cartera */}
             <div className="bg-slate-800/30 border border-slate-700/40 rounded-2xl p-6">
@@ -572,3 +616,4 @@ function KPI({ icon, label, value, sub, color }) {
     </div>
   );
 }
+

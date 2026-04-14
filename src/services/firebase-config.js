@@ -3,12 +3,12 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
-  apiKey: "api-key-manual-placeholder", // Se reemplaza por la del usuario si es necesario
+  apiKey: "AIzaSyAQI11AzX5yhmP0trc1RcUQOfPxdIqPObk",
   authDomain: "vyj-capital.firebaseapp.com",
   projectId: "vyj-capital",
-  storageBucket: "vyj-capital.appspot.com",
-  messagingSenderId: "367375355026",
-  appId: "1:367375355026:web:866e746e8aeecda16c5181"
+  storageBucket: "vyj-capital.firebasestorage.app",
+  messagingSenderId: "980348234124",
+  appId: "1:980348234124:web:c78c003490d533b9a04ea9"
 };
 
 export const app = initializeApp(firebaseConfig);
