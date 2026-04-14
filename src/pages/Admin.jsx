@@ -71,6 +71,7 @@ function generarMensajeWA(p) {
   return encodeURIComponent(
     `Hola ${p.nombre_cliente},\n\n` +
     `Le recordamos que su pago mensual vence el día *${dia}*.\n\n` +
+    `${p.fiador_nombre ? `Fiador: ${p.fiador_nombre}\n\n` : ''}` +
     `📊 *Resumen VYJ Capital:*\n` +
     `• Rédito del mes: ${fmt(redito)}\n` +
     `${reditosAt > 0 ? `• Réditos atrasados: ${fmt(reditosAt)}\n` : ''}` +
@@ -359,8 +360,11 @@ export default function Admin() {
                             <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${cfg.badge}`}>{cfg.label}</span>
                             <span className="text-[9px] font-bold text-slate-500 uppercase">Cada día {p.dia_pago}</span>
                           </div>
-                          <p className="font-black text-white text-base uppercase tracking-tight">{p.nombre_cliente}</p>
-                          {p.telefono && <p className="text-xs text-slate-400 font-bold mt-0.5">{p.telefono}</p>}
+                          <p className="font-black text-white text-base uppercase tracking-tight leading-none mb-1">{p.nombre_cliente}</p>
+                          <p className="text-[10px] text-slate-500 font-mono mb-1">Préstamo #{p.id.slice(0, 8).toUpperCase()}</p>
+                          {p.fiador_nombre && (
+                            <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest opacity-80">Fiador: {p.fiador_nombre}</p>
+                          )}
                         </div>
 
                         {/* Montos */}
