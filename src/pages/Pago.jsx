@@ -234,8 +234,8 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
           <div className="flex-1">
             <p className="font-black text-white text-sm uppercase tracking-tight leading-none mb-1">{prestamo.nombre_cliente}</p>
             <p className="text-[10px] text-slate-500 font-bold mb-1">Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
-            {prestamo.fiador_nombre && (
-              <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest opacity-80">Fiador: {prestamo.fiador_nombre}</p>
+            {(prestamo.fiador_nombre || fichaForm.solidario_nombre) && (
+              <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest opacity-80">Fiador: {prestamo.fiador_nombre || fichaForm.solidario_nombre}</p>
             )}
           </div>
           <div className="flex gap-1 bg-slate-800/60 rounded-xl p-1">
@@ -450,8 +450,8 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
                   <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Estado de Cuenta — VYJ Capital</p>
                   <p className="font-black text-white text-lg uppercase mt-1 leading-none">{prestamo.nombre_cliente}</p>
                   <p className="text-xs text-slate-400 font-bold mt-1 mb-2">Préstamo #{idPrestamo.slice(0, 10).toUpperCase()}</p>
-                  {prestamo.fiador_nombre && (
-                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Fiador: {prestamo.fiador_nombre}</p>
+                  {(prestamo.fiador_nombre || fichaForm.solidario_nombre) && (
+                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Fiador: {prestamo.fiador_nombre || fichaForm.solidario_nombre}</p>
                   )}
                   <p className="text-xs text-slate-500 font-bold mt-1">Fecha de corte: {new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
