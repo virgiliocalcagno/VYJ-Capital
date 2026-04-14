@@ -233,10 +233,10 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
           <div className="h-5 w-px bg-slate-700" />
           <div className="flex-1">
             <p className="font-black text-white text-sm uppercase tracking-tight leading-none mb-1">{prestamo.nombre_cliente}</p>
+            <p className="text-[10px] text-slate-500 font-bold mb-1">Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
             {prestamo.fiador_nombre && (
-              <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest mb-1.5 opacity-80">Fiador: {prestamo.fiador_nombre}</p>
+              <p className="text-[9px] text-blue-400 font-black uppercase tracking-widest opacity-80">Fiador: {prestamo.fiador_nombre}</p>
             )}
-            <p className="text-[10px] text-slate-500 font-bold">{prestamo.cedula_cliente || 'Sin cédula'} · Préstamo #{idPrestamo.slice(0, 8).toUpperCase()}</p>
           </div>
           <div className="flex gap-1 bg-slate-800/60 rounded-xl p-1">
             {!publicMode ? (
@@ -449,10 +449,10 @@ export default function Pago({ publicMode: initialPublicMode = false }) {
                 <div className="bg-slate-800/40 px-6 py-4 border-b border-slate-700">
                   <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Estado de Cuenta — VYJ Capital</p>
                   <p className="font-black text-white text-lg uppercase mt-1 leading-none">{prestamo.nombre_cliente}</p>
+                  <p className="text-xs text-slate-400 font-bold mt-1 mb-2">Préstamo #{idPrestamo.slice(0, 10).toUpperCase()}</p>
                   {prestamo.fiador_nombre && (
-                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest mt-1 mb-2">Fiador: {prestamo.fiador_nombre}</p>
+                    <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest">Fiador: {prestamo.fiador_nombre}</p>
                   )}
-                  <p className="text-xs text-slate-400 font-bold">{prestamo.cedula_cliente} · Préstamo #{idPrestamo.slice(0, 10).toUpperCase()}</p>
                   <p className="text-xs text-slate-500 font-bold mt-1">Fecha de corte: {new Date().toLocaleDateString('es-DO', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                 </div>
 
